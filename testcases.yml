@@ -1,0 +1,83 @@
+mini:
+  - name: OmpSCR
+    tests:
+    - name: OmpSCR-fft
+      cmd: ./c_fft.par 8
+    - name: OmpSCR-fft6
+      cmd: ./c_fft6.par 256 256
+
+  - name: DRB
+    tests:
+    - name: DRB122
+      cmd: ./DRB122-taskundeferred-orig-no.c.tsan-clang.out
+    - name: DRB123
+      cmd: ./DRB123-taskundeferred-orig-yes.c.tsan-clang.out
+    - name: DRB150
+      cmd: ./DRB150-missinglock1-orig-gpu-yes.c.tsan-clang.out
+    - name: DRB152
+      cmd: ./DRB152-missinglock2-orig-gpu-no.c.tsan-clang.out
+    - name: DRB154
+      cmd: ./DRB154-missinglock3-orig-gpu-no.c.tsan-clang.out
+    - name: DRB155
+      cmd: ./DRB155-missingordered-orig-gpu-no.c.tsan-clang.out
+    - name: DRB177
+      cmd: ./DRB177-fib-taskdep-yes.c.tsan-clang.out
+
+  - name: DRACC
+    tests:
+      - name: DRACC_OMP_017 
+        cmd: ./DRACC_OMP_017_Counter_wrong_lock_Inter_yes.exe
+      - name: DRACC_OMP_018
+        cmd: ./DRACC_OMP_018_Counter_wrong_lock_simd_yes.exe
+      - name: DRACC_OMP_019
+        cmd: ./DRACC_OMP_019_Counter_wrong_lock_simd_Intra_yes.exe
+      - name: DRACC_OMP_020
+        cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
+
+  - name: miniFE
+    tests:
+      - name: miniFE 
+        cmd: ./miniFE.x
+        cleanup: rm miniFE.*.yaml
+
+medium:
+  - name: OmpSCR
+    tests:
+    - name: OmpSCR-fft
+      cmd: ./c_fft.par 8
+    - name: OmpSCR-fft6
+      cmd: ./c_fft6.par 256 256
+
+  - name: DRB
+    tests:
+    - name: DRB122
+      cmd: ./DRB122-taskundeferred-orig-no.c.tsan-clang.out
+    - name: DRB123
+      cmd: ./DRB123-taskundeferred-orig-yes.c.tsan-clang.out
+    - name: DRB150
+      cmd: ./DRB150-missinglock1-orig-gpu-yes.c.tsan-clang.out
+    - name: DRB152
+      cmd: ./DRB152-missinglock2-orig-gpu-no.c.tsan-clang.out
+    - name: DRB154
+      cmd: ./DRB154-missinglock3-orig-gpu-no.c.tsan-clang.out
+    - name: DRB155
+      cmd: ./DRB155-missingordered-orig-gpu-no.c.tsan-clang.out
+    - name: DRB177
+      cmd: ./DRB177-fib-taskdep-yes.c.tsan-clang.out
+
+  - name: DRACC
+    tests:
+      - name: DRACC_OMP_017 
+        cmd: ./DRACC_OMP_017_Counter_wrong_lock_Inter_yes.exe
+      - name: DRACC_OMP_018
+        cmd: ./DRACC_OMP_018_Counter_wrong_lock_simd_yes.exe
+      - name: DRACC_OMP_019
+        cmd: ./DRACC_OMP_019_Counter_wrong_lock_simd_Intra_yes.exe
+      - name: DRACC_OMP_020
+        cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
+
+  - name: miniFE
+    tests:
+      - name: miniFE 
+        cmd: ./miniFE.x
+        cleanup: rm miniFE.*.yaml

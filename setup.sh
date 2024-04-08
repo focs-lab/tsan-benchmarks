@@ -255,7 +255,7 @@ build_c11_benchmarks() {
     cd $ROOT_BUILD
 
     rm -rf c11concurrency-benchmarks
-    git clone git://plrg.ics.uci.edu/c11concurrency-benchmarks.git
+    git clone https://github.com/dwslim/c11concurrency-benchmarks.git
 
     cd c11concurrency-benchmarks
     git checkout dc040d31d24e00df0c5e5a7206804fe6503798c1 > /dev/null           # tested this script on this commit

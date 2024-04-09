@@ -50,7 +50,7 @@ class TestAggStats:
             "warnings stdev",
             "warnings median"
         ]
-    
+
     def as_row(self):
         return iter(
             [
@@ -145,7 +145,7 @@ TIMEFMT='=== REPORT\n'\
         memory_usage = int(time_report_lines[8].split()[2].decode())
 
         tsan_report_start = len(output) - 1
-        while tsan_report_start > 0:
+        while tsan_report_start >= 0:
             if b"ThreadSanitizer: reported" in output[tsan_report_start]:
                 break
             tsan_report_start -= 1
@@ -154,7 +154,7 @@ TIMEFMT='=== REPORT\n'\
             tsan_num_warnings = int(output[tsan_report_start].decode()[len("ThreadSanitizer: reported "):].split(" ")[0])
         else:
             tsan_num_warnings = 0
-        
+
         # print(b"\n".join(time_report_lines).decode())
         # print("Duration:", real_duration, "s")
         # print("Memory Usage:", memory_usage, "MB")

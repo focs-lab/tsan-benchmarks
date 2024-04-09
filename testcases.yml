@@ -3,8 +3,6 @@ mini:
     tests:
     - name: OmpSCR-fft
       cmd: ./c_fft.par 8
-    - name: OmpSCR-fft6
-      cmd: ./c_fft6.par 256 256
 
   - name: DRB
     tests:
@@ -76,8 +74,94 @@ medium:
       - name: DRACC_OMP_020
         cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
 
+  - name: silo
+    tests:
+      - name: silo_dbtest
+        cmd: ./dbtest
+
+  - name: mabain
+    tests:
+      - name: mb_rc_test
+        cmd: ./mb_rc_test
+
+  - name: gdax
+    tests:
+      - name: gdax 
+        cmd: LD_LIBRARY_PATH=./dependencies/libcds-2.3.2/build-release/bin:$LD_LIBRARY_PATH ./demo
+
+  - name: iris
+    tests:
+      - name: iris
+        cmd: ./test2
+
+  - name: npb-omp
+    tests:
+      - name: dc.S.x 
+        cmd: ./dc.S.x
+        cleanup: rm ADC.*
+      - name: is.W.x 
+        cmd: ./is.W.x
+        cleanup: rm ADC.*
+
   - name: miniFE
     tests:
       - name: miniFE 
         cmd: ./miniFE.x
         cleanup: rm miniFE.*.yaml
+
+  - name: miniAMR
+    tests:
+      - name: miniAMR 
+        cmd: ./ma.x
+
+  - name: SimpleMOC
+    tests:
+      - name: SimpleMOC_small
+        cmd: ./SimpleMOC -s
+
+  - name: HPCCG
+    tests:
+      - name: HPCCG_64_64_64
+        cmd: ./test_HPCCG 64 64 64
+        cleanup: rm hpccg*
+
+  - name: kripke
+    tests:
+      - name: kripke_groups_8_niter_1
+        cmd: ./kripke.exe --groups 8 --niter 1
+
+  - name: lulesh
+    tests:
+      - name: lulesh_size_3
+        cmd: ./lulesh2.0 -q -s 3
+
+  - name: xsbench
+    tests:
+      - name: xsbench_small
+        cmd: ./XSBench -small
+
+  - name: rsbench
+    tests:
+      - name: rsbench_small
+        cmd: ./rsbench -s small
+
+  - name: quicksilver
+    tests:
+      - name: quicksilver_N_1
+        cmd: ./qs -N 1
+
+  - name: comd
+    tests:
+      - name: CoMD_N_1
+        cmd: ./CoMD-openmp -N 1
+        cleanup: rm CoMD*
+
+  - name: AMG
+    tests:
+      - name: AMG
+        cmd: ./amg
+
+  - name: graphchi
+    tests:
+      - name: graphchi_pagerank_facebook
+        cmd: bin/example_apps/pagerank file data/facebook_combined.txt niters 5000 filetype edgelist

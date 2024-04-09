@@ -46,7 +46,7 @@ class TestAggStats:
             "memory mean (MB)",
             "memory stdev (MB)",
             "memory median (MB)",
-            "warnings mean (MB)",
+            "warnings mean",
             "warnings stdev",
             "warnings median"
         ]
@@ -59,8 +59,8 @@ class TestAggStats:
                 self.duration_stdev,
                 self.duration_median,
                 self.memory_mean,
-                self.memory_median,
                 self.memory_stdev,
+                self.memory_median,
                 self.warnings_mean,
                 self.warnings_stdev,
                 self.warnings_median

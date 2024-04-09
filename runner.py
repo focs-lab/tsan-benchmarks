@@ -82,8 +82,10 @@ def prepare_env():
         print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
         sys.exit(1)
 
+    LIBCLANGRT_LIB_PATH = f"{LLVM_BUILD_PATH}/lib/clang/19/lib/x86_64-unknown-linux-gnu"
+
     ld_library_path = os.getenv("LD_LIBRARY_PATH")
-    ld_library_path_new = f"{LIBOMP_LIB_PATH}:{ld_library_path}" if ld_library_path is not None else LIBOMP_LIB_PATH
+    ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}:{ld_library_path}" if ld_library_path is not None else LIBOMP_LIB_PATH
     os.environ["LD_LIBRARY_PATH"] = ld_library_path_new
 
 

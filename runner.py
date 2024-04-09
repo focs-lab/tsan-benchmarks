@@ -137,7 +137,8 @@ TIMEFMT='=== REPORT\n'\
         if DEBUG:
             print(b"\n".join(output).decode())
         # print(output)
-        time_report_start = output.index(b"=== REPORT")
+        # time_report_start = output.index(b"=== REPORT")
+        time_report_start = output.index(next(filter(lambda line: b"=== REPORT" in line, reversed(output))))
         time_report_lines = output[time_report_start+1:time_report_start+time_report_num_lines]
         real_duration = float(time_report_lines[1].split()[2][:-1].decode())
         # user_duration = time_report_lines[2].split()[2][:-1]

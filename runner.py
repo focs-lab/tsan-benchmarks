@@ -145,14 +145,17 @@ TIMEFMT='=== REPORT\n'\
         # kernel_duration = time_report_lines[3].split()[2][:-1]
         memory_usage = int(time_report_lines[8].split()[2].decode())
 
+        TSAN_REPORT_PREFIX = "ThreadSanitizer: reported "
         tsan_report_start = len(output) - 1
         while tsan_report_start >= 0:
-            if b"ThreadSanitizer: reported" in output[tsan_report_start]:
+            if TSAN_REPORT_PREFIX in output[tsan_report_start].decode():
                 break
             tsan_report_start -= 1
 
         if tsan_report_start >= 0:
-            tsan_num_warnings = int(output[tsan_report_start].decode()[len("ThreadSanitizer: reported "):].split(" ")[0])
+            tsan_report_line = output[tsan_report_start].decode()
+            prefix_start = tsan_report_line.index(TSAN_REPORT_PREFIX)
+            tsan_num_warnings = int(tsan_report_line[prefix_start+len(TSAN_REPORT_PREFIX):].split(" ")[0])
         else:
             tsan_num_warnings = 0
 

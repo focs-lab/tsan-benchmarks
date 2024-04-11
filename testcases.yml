@@ -3,6 +3,8 @@ mini:
     tests:
     - name: OmpSCR-fft
       cmd: ./c_fft.par 8
+    - name: OmpSCR-fft6
+      cmd: ./c_fft6.par 256 256
 
   - name: DRB
     tests:
@@ -37,6 +39,12 @@ mini:
       - name: miniFE 
         cmd: ./miniFE.x
         cleanup: rm miniFE.*.yaml
+
+  - name: HPCCG
+    tests:
+      - name: HPCCG_64_64_64
+        cmd: ./test_HPCCG 64 64 64
+        cleanup: rm hpccg*
 
 medium:
   - name: OmpSCR
@@ -74,20 +82,10 @@ medium:
       - name: DRACC_OMP_020
         cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
 
-  - name: silo
-    tests:
-      - name: silo_dbtest
-        cmd: ./dbtest
-
   - name: mabain
     tests:
       - name: mb_rc_test
         cmd: ./mb_rc_test
-
-  - name: gdax
-    tests:
-      - name: gdax 
-        cmd: LD_LIBRARY_PATH=./dependencies/libcds-2.3.2/build-release/bin:$LD_LIBRARY_PATH ./demo
 
   - name: iris
     tests:
@@ -113,11 +111,6 @@ medium:
     tests:
       - name: miniAMR 
         cmd: ./ma.x
-
-  - name: SimpleMOC
-    tests:
-      - name: SimpleMOC_small
-        cmd: ./SimpleMOC -s
 
   - name: HPCCG
     tests:
@@ -165,3 +158,31 @@ medium:
     tests:
       - name: graphchi_pagerank_facebook
         cmd: bin/example_apps/pagerank file data/facebook_combined.txt niters 5000 filetype edgelist
+
+big:
+  - name: silo
+    tests:
+      - name: silo_dbtest
+        cmd: ./dbtest
+
+  - name: gdax
+    tests:
+      - name: gdax 
+        cmd: LD_LIBRARY_PATH=./dependencies/libcds-2.3.2/build-release/bin:$LD_LIBRARY_PATH ./demo
+
+  - name: SimpleMOC
+    tests:
+      - name: SimpleMOC_small
+        cmd: ./SimpleMOC -s
+
+temp:
+  - name: iris
+    tests:
+      - name: iris
+        cmd: ./test2
+
+  - name: miniFE
+    tests:
+      - name: miniFE 
+        cmd: ./miniFE.x
+        cleanup: rm miniFE.*.yaml

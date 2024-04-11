@@ -20,11 +20,11 @@ else
 
   if [ "${NO_TSAN}" == "1" ]; then
     echo '[*] NO_TSAN=1 detected. Will build tests without TSAN.'
-    TSAN_FLAG=""
+    TSAN_FLAGS=""
   else
     echo '[*] To disable TSAN for this benchmark, set $NO_TSAN=1. E.g.'
     echo 'export NO_TSAN=1'
-    TSAN_FLAG="-fsanitize=thread -fno-sanitize-link-runtime -fno-sanitize-link-c++-runtime -lclang_rt.tsan"
+    TSAN_FLAGS="-fsanitize=thread -fno-sanitize-link-runtime -fno-sanitize-link-c++-runtime -lclang_rt.tsan"
   fi
 fi
 
@@ -65,8 +65,8 @@ build_ompscr() {
     sed -i "s*OSCR_C_OMPFLAG=*OSCR_C_OMPFLAG=$LIBOMP_FLAGS*g"     config/templates/user.cf.mk
     sed -i "s*OSCR_CPP_OMPFLAG=*OSCR_CPP_OMPFLAG=$LIBOMP_FLAGS*g" config/templates/user.cf.mk
 
-    sed -i "s/OSCR_C_OTHERS=/OSCR_C_OTHERS=$TSAN_FLAG/g" config/templates/user.cf.mk
-    sed -i "s/OSCR_CPP_OTHERS=/OSCR_CPP_OTHERS=$TSAN_FLAG/g" config/templates/user.cf.mk
+    sed -i "s/OSCR_C_OTHERS=/OSCR_C_OTHERS=$TSAN_FLAGS/g" config/templates/user.cf.mk
+    sed -i "s/OSCR_CPP_OTHERS=/OSCR_CPP_OTHERS=$TSAN_FLAGS/g" config/templates/user.cf.mk
 
     # need these line to prevent compilation error due to -W-implicit-function-declaration
     sed -i "s/#include <stdio.h>/#include <stdio.h>\n#include <stdlib.h>/g" applications/c_GraphSearch/AStack.c
@@ -99,7 +99,7 @@ build_dracc() {
     rm src/DRACC_OMP_021_Large_Data_Copy_no.c
 
     ## Build
-    CC=$CC FLAGS="$TSAN_FLAG" FLAGS_OPENMP="$LIBOMP_FLAGS" make all
+    CC=$CC FLAGS="$TSAN_FLAGS" FLAGS_OPENMP="$LIBOMP_FLAGS" make all
 
     ## Move the binaries out
     rm -rf $ROOT_BIN/DRACC
@@ -122,6 +122,7 @@ build_drb() {
     # if we stick to the pinned commit version above, there will not be issues
     sed -i 's*compilereturn=$?;*continue*g' scripts/test-harness.sh
     sed -i "s*python3 scripts/metric.py*continue #*g" scripts/test-harness.sh
+    sed -i "s*-fsanitize=thread*$TSAN_FLAGS*g" scripts/test-harness.sh
 
     CLANG="$CC $LIBOMP_FLAGS" CLANGXX="$CXX $LIBOMP_FLAGS" ./check-data-races.sh --tsan-clang c
 
@@ -269,10 +270,10 @@ build_c11_benchmarks() {
     cd c11concurrency-benchmarks
     git checkout dc040d31d24e00df0c5e5a7206804fe6503798c1 > /dev/null           # tested this script on this commit
 
-    echo -e "#/bin/bash\n$CC $TSAN_FLAG \$@" > ./clang
-    echo -e "#/bin/bash\n$CC $TSAN_FLAG \$@" > ./gcc
-    echo -e "#/bin/bash\n$CXX $TSAN_FLAG -Wno-error=vla-cxx-extension -Wno-error=cast-align \$@" > ./clang++
-    echo -e "#/bin/bash\n$CXX $TSAN_FLAG \$@" > ./g++
+    echo -e "#/bin/bash\n$CC $TSAN_FLAGS \$@" > ./clang
+    echo -e "#/bin/bash\n$CC $TSAN_FLAGS \$@" > ./gcc
+    echo -e "#/bin/bash\n$CXX $TSAN_FLAGS -Wno-error=vla-cxx-extension -Wno-error=cast-align \$@" > ./clang++
+    echo -e "#/bin/bash\n$CXX $TSAN_FLAGS \$@" > ./g++
 
     build_c11_silo
     build_c11_iris
@@ -309,7 +310,7 @@ build_npb() {
     # config for make
     cp config/make.def.template config/make.def
     sed -i "s*gcc*$CC*g" config/make.def
-    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAG*g" config/make.def
+    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAGS*g" config/make.def
     make suite
 
     # copy the bins out
@@ -331,7 +332,7 @@ build_miniFE() {
     cd miniFE-2.2.0
 
     cd openmp/src
-    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAG*g" Makefile
+    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAGS*g" Makefile
     sed -i "s*mpicxx*$CXX*g" Makefile
     sed -i "s*mpicc*$CC*g" Makefile
     sed -i "s*-DHAVE_MPI -DMPICH_IGNORE_CXX_SEEK**g" Makefile
@@ -356,7 +357,7 @@ build_miniAMR() {
     cd miniAMR-1.7.0
 
     cd openmp
-    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAG*g" Makefile
+    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAGS*g" Makefile
     sed -i "s*CC   = cc*CC   = mpicc*g" Makefile
     sed -i "s*LD   = cc*LD   = mpicc*g" Makefile
     sed -i "s*LDFLAGS =*LDFLAGS =\$(CFLAGS)*g" Makefile
@@ -399,7 +400,7 @@ build_SimpleMOC() {
     cd SimpleMOC-4/src
 
     sed -i "s*CC = gcc*CC = $CC*g" Makefile
-    sed -i "s*-std=gnu99*-std=gnu99 $TSAN_FLAG*g" Makefile
+    sed -i "s*-std=gnu99*-std=gnu99 $TSAN_FLAGS*g" Makefile
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" Makefile
 
     make
@@ -421,8 +422,8 @@ build_HPCCG() {
     cd HPCCG
     git checkout 80dd2f12a4e8aa70c330a5686cdda3fd187c2545           # script was tested on this commit
 
-    sed -i "s*CXX=/usr/local/bin/g++*CXX=$CXX $TSAN_FLAG*g" Makefile
-    sed -i "s*LINKER=/usr/local/bin/g++*LINKER=$CXX $TSAN_FLAG*g" Makefile
+    sed -i "s*CXX=/usr/local/bin/g++*CXX=$CXX $TSAN_FLAGS*g" Makefile
+    sed -i "s*LINKER=/usr/local/bin/g++*LINKER=$CXX $TSAN_FLAGS*g" Makefile
     sed -i "s*USE_OMP =*USE_OMP = -DUSING_OMP*g" Makefile
     sed -i "s*#OMP_FLAGS = -fopenmp*OMP_FLAGS = $LIBOMP_FLAGS*g" Makefile
     sed -i "s*-ftree-vectorizer-verbose=2**g" Makefile
@@ -448,7 +449,7 @@ build_kripke() {
 
     mkdir build
     cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$LIBOMP_FLAGS $TSAN_FLAG" -DCMAKE_CXX_FLAGS="$LIBOMP_FLAGS $TSAN_FLAG" -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_LINKER=$CC -DCMAKE_CXX_FLAGS_RELEASE="-O3 -ffast-math" -DENABLE_OPENMP=ON -DENABLE_MPI=OFF
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$LIBOMP_FLAGS $TSAN_FLAGS" -DCMAKE_CXX_FLAGS="$LIBOMP_FLAGS $TSAN_FLAGS" -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_LINKER=$CC -DCMAKE_CXX_FLAGS_RELEASE="-O3 -ffast-math" -DENABLE_OPENMP=ON -DENABLE_MPI=OFF
 
     make -j12
 
@@ -473,7 +474,7 @@ build_lulesh() {
     mkdir build
     cd build
     
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=$CXX -DWITH_MPI=OFF -DWITH_OPENMP=ON -DOpenMP_CXX_FLAGS="$LIBOMP_FLAGS" -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src/libomp.so" -DCMAKE_CXX_FLAGS="$TSAN_FLAG"
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=$CXX -DWITH_MPI=OFF -DWITH_OPENMP=ON -DOpenMP_CXX_FLAGS="$LIBOMP_FLAGS" -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src/libomp.so" -DCMAKE_CXX_FLAGS="$TSAN_FLAGS"
 
     make -j12
 
@@ -497,7 +498,7 @@ build_xsbench() {
     cd openmp-threading
 
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" Makefile
-    sed -i "s*-Wall*-Wall $TSAN_FLAG*g" Makefile
+    sed -i "s*-Wall*-Wall $TSAN_FLAGS*g" Makefile
 
     CC=$CC CXX=$CXX make -j12
 
@@ -521,7 +522,7 @@ build_rsbench() {
     cd openmp-threading
 
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" Makefile
-    sed -i "s*-Wall*-Wall $TSAN_FLAG*g" Makefile
+    sed -i "s*-Wall*-Wall $TSAN_FLAGS*g" Makefile
 
     CC=$CC CXX=$CXX make -j10
 
@@ -543,9 +544,9 @@ build_quicksilver() {
     cd Quicksilver-1.0/src
 
     sed -i "s*CXX =*CXX = $CXX*" Makefile
-    sed -i "s*CXXFLAGS =*CXXFLAGS = $TSAN_FLAG $LIBOMP_FLAGS -DHAVE_OPENMP*" Makefile
-    sed -i "s*CPPFLAGS =*CPPFLAGS = $TSAN_FLAG $LIBOMP_FLAGS -DHAVE_OPENMP*" Makefile
-    sed -i "s*LDFLAGS =*LDFLAGS = $TSAN_FLAG $LIBOMP_FLAGS -DHAVE_OPENMP*" Makefile
+    sed -i "s*CXXFLAGS =*CXXFLAGS = $TSAN_FLAGS $LIBOMP_FLAGS -DHAVE_OPENMP*" Makefile
+    sed -i "s*CPPFLAGS =*CPPFLAGS = $TSAN_FLAGS $LIBOMP_FLAGS -DHAVE_OPENMP*" Makefile
+    sed -i "s*LDFLAGS =*LDFLAGS = $TSAN_FLAGS $LIBOMP_FLAGS -DHAVE_OPENMP*" Makefile
 
     make -j12
 
@@ -574,7 +575,7 @@ build_comd() {
 
     sed -i "s*DO_MPI = ON*DO_MPI = OFF*g" Makefile
     sed -i "s*CC = mpicc*CC = $CC*g" Makefile
-    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAG*g" Makefile
+    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAGS*g" Makefile
 
     make -j12
 
@@ -594,7 +595,7 @@ build_amg() {
     rm 1.2.tar.gz
 
     cd AMG-1.2
-    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAG -Wno-error=implicit-function-declaration*" Makefile.include
+    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAGS -Wno-error=implicit-function-declaration*" Makefile.include
 
     OMPI_CC=$CC make -j12
 
@@ -618,7 +619,7 @@ build_gromacs() {
     rm -rf $ROOT_BIN/gromacs
     mkdir $ROOT_BIN/gromacs
     mkdir $ROOT_BIN/gromacs/build
-    cmake -B $ROOT_BIN/gromacs/build . -DGMX_BUILD_OWN_FFTW=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=$TSAN_FLAG -DCMAKE_CXX_FLAGS=$TSAN_FLAG -DOpenMP_CXX_FLAGS=-I$LIBOMP_INCLUDE_PATH -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src/libomp.so" -DOpenMP_C_FLAGS=-I$LIBOMP_INCLUDE_PATH -DOpenMP_C_LIB_NAMES="libomp" -DBUILD_SHARED_LIBS=ON
+    cmake -B $ROOT_BIN/gromacs/build . -DGMX_BUILD_OWN_FFTW=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=$TSAN_FLAGS -DCMAKE_CXX_FLAGS=$TSAN_FLAGS -DOpenMP_CXX_FLAGS=-I$LIBOMP_INCLUDE_PATH -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src/libomp.so" -DOpenMP_C_FLAGS=-I$LIBOMP_INCLUDE_PATH -DOpenMP_C_LIB_NAMES="libomp" -DBUILD_SHARED_LIBS=ON
     make -C $ROOT_BIN/gromacs/build -j12
 
     mkdir $ROOT_BIN/gromacs/testcases
@@ -642,13 +643,13 @@ build_graph500() {
     cd graph500-2.1.4
 
     cp make-incs/make.inc-gcc make.inc
-    sed -i "s*CFLAGS = -g -std=c99*CFLAGS = -g -std=c99 $TSAN_FLAG*g" make.inc
-    sed -i "s*LDLIBS = -lm -lrt*LDLIBS = -lm -lrt $TSAN_FLAG*g" make.inc
-    sed -i "s*CPPFLAGS = -DUSE_MMAP_LARGE -DUSE_MMAP_LARGE_EXT*CPPFLAGS = -DUSE_MMAP_LARGE -DUSE_MMAP_LARGE_EXT $TSAN_FLAG*g" make.inc
+    sed -i "s*CFLAGS = -g -std=c99*CFLAGS = -g -std=c99 $TSAN_FLAGS*g" make.inc
+    sed -i "s*LDLIBS = -lm -lrt*LDLIBS = -lm -lrt $TSAN_FLAGS*g" make.inc
+    sed -i "s*CPPFLAGS = -DUSE_MMAP_LARGE -DUSE_MMAP_LARGE_EXT*CPPFLAGS = -DUSE_MMAP_LARGE -DUSE_MMAP_LARGE_EXT $TSAN_FLAGS*g" make.inc
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" make.inc
 
-    sed -i "s*-DGRAPH_GENERATOR_OMP*-DGRAPH_GENERATOR_OMP $TSAN_FLAG*g" generator/Makefile.omp
-    sed -i "s*LDFLAGS = -O3*LDFLAGS = -O3 $TSAN_FLAG*g" generator/Makefile.omp
+    sed -i "s*-DGRAPH_GENERATOR_OMP*-DGRAPH_GENERATOR_OMP $TSAN_FLAGS*g" generator/Makefile.omp
+    sed -i "s*LDFLAGS = -O3*LDFLAGS = -O3 $TSAN_FLAGS*g" generator/Makefile.omp
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" generator/Makefile.omp
     sed -i "s*gcc*$CC*g" generator/Makefile.omp
 
@@ -670,8 +671,8 @@ build_graphchi() {
 
     cd graphchi-cpp
     sed -i "s*g++*$CXX*g" Makefile
-    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAG -Wno-error=register*g" Makefile
-    sed -i "s*-lz*-lz $TSAN_FLAG*g" Makefile
+    sed -i "s*-fopenmp*$LIBOMP_FLAGS $TSAN_FLAGS -Wno-error=register*g" Makefile
+    sed -i "s*-lz*-lz $TSAN_FLAGS*g" Makefile
 
     make -j12
 
@@ -695,23 +696,26 @@ rm -rf $ROOT_BIN
 mkdir $ROOT_BUILD
 mkdir $ROOT_BIN
 
-# install_dependencies
-# build_ompscr
-# build_dracc
-# build_drb
-# build_c11_benchmarks
-# build_npb
-build_miniFE
-# build_miniAMR
-# build_SimpleMOC
-# build_HPCCG
-# build_kripke
-# build_lulesh
-# build_xsbench
-# build_rsbench
-# build_quicksilver
-# build_comd
-# build_amg
-# build_gromacs
-# build_graph500
-# build_graphchi
+install_dependencies
+build_ompscr &
+build_dracc &
+build_drb &
+build_c11_benchmarks &
+build_npb &
+build_miniFE &
+build_miniAMR &
+build_SimpleMOC &
+build_HPCCG &
+build_kripke &
+build_lulesh &
+build_xsbench &
+build_rsbench &
+build_quicksilver &
+build_comd &
+build_amg &
+build_gromacs &
+build_graph500 &
+build_graphchi &
+
+wait
+echo "[+] Finished building all benchmarks!"

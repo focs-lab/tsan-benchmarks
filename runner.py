@@ -85,7 +85,7 @@ def prepare_env():
     LIBCLANGRT_LIB_PATH = f"{LLVM_BUILD_PATH}/lib/clang/19/lib/x86_64-unknown-linux-gnu"
 
     ld_library_path = os.getenv("LD_LIBRARY_PATH")
-    ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}:{ld_library_path}" if ld_library_path is not None else LIBOMP_LIB_PATH
+    ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}" + (":"+ld_library_path if ld_library_path is not None else "")
     os.environ["LD_LIBRARY_PATH"] = ld_library_path_new
 
 
@@ -94,7 +94,7 @@ def find_zsh():
     try:
         ZSH_PATH = subprocess.check_output(["which", "zsh"]).decode().strip()
     except subprocess.CalledProcessError:
-        print("[!] zsh is not found on the system. It is needed for its powerful `time` command that provide stats on memory usage.")
+        print("[!] zsh is not found on the system. It is needed for its more powerful `time` command that provide stats on memory usage.")
         print("[!] Please install it with `sudo apt install -y zsh` to proceed.")
         sys.exit(1)
 

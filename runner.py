@@ -13,6 +13,7 @@ from typing import List
 DEBUG = False
 BUILT_PROGRAMS_PATH = "bin"            # where the built programs are located (currently in bin)
 REPORT_FILE_PATH = "report.csv"
+TIMEOUT = 180
 
 
 @dataclass
@@ -131,7 +132,7 @@ TIMEFMT='=== REPORT\n'\
 
         process.stdin.write(time_report_format)
         process.stdin.write(f"cd {BUILT_PROGRAMS_PATH}/{test_set_name}\n".encode())
-        process.stdin.write(f"time {test_cmd}\n{test_cleanup}\nexit\n".encode())
+        process.stdin.write(f"time timeout --signal=SIGINT {TIMEOUT} {test_cmd}\n{test_cleanup}\nexit\n".encode())
         process.stdin.write(b"exit\n")
         process.stdin.close()
 
@@ -160,6 +161,23 @@ TIMEFMT='=== REPORT\n'\
             tsan_num_warnings = int(tsan_report_line[prefix_start+len(TSAN_REPORT_PREFIX):].split(" ")[0])
         else:
             tsan_num_warnings = 0
+
+        # SAMPLING_COUNTER_PREFIX = "Sampling Counter: "
+        # sampling_counter_start = len(output) - 1
+        # while sampling_counter_start >= 0:
+        #     if SAMPLING_COUNTER_PREFIX in output[sampling_counter_start].decode():
+        #         break
+        #     sampling_counter_start -= 1
+
+        # if sampling_counter_start >= 0:
+        #     sampling_counter_line = output[sampling_counter_start].decode()
+        #     prefix_start = sampling_counter_line.index(SAMPLING_COUNTER_PREFIX)
+        #     sampling_counter = int(sampling_counter_line[prefix_start+len(SAMPLING_COUNTER_PREFIX):].split(" ")[0])
+        # else:
+        #     sampling_counter = 0
+
+        # print("Sampling Counter:", sampling_counter)
+        print("Duration:", real_duration)
 
         # print(b"\n".join(time_report_lines).decode())
         # print("Duration:", real_duration, "s")

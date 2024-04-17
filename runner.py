@@ -13,7 +13,7 @@ from typing import List
 DEBUG = False
 BUILT_PROGRAMS_PATH = "bin"            # where the built programs are located (currently in bin)
 REPORT_FILE_PATH = "report.csv"
-TIMEOUT = 180
+TIMEOUT = 600
 
 
 @dataclass
@@ -23,6 +23,11 @@ class TestStats:
     duration: float
     memory_usage: int
     tsan_num_warnings: int
+    num_locks: int
+    num_accesses: int
+    num_copies: int
+    num_monocopies: int
+    num_relacq: int
 
 @dataclass
 class TestAggStats:
@@ -37,6 +42,11 @@ class TestAggStats:
     warnings_mean: float
     warnings_stdev: float
     warnings_median: float
+    num_locks_mean: float
+    num_accesses_mean: float
+    num_copies_mean: float
+    num_monocopies_mean: float
+    num_relacq_mean: float
 
     def header():
         return [
@@ -49,7 +59,12 @@ class TestAggStats:
             "memory median (MB)",
             "warnings mean",
             "warnings stdev",
-            "warnings median"
+            "warnings median",
+            "num locks mean",
+            "num accesses mean",
+            "num tc copies mean",
+            "num tc monocopies mean",
+            "num relacqs mean"
         ]
 
     def as_row(self):
@@ -64,7 +79,12 @@ class TestAggStats:
                 self.memory_median,
                 self.warnings_mean,
                 self.warnings_stdev,
-                self.warnings_median
+                self.warnings_median,
+                self.num_locks_mean,
+                self.num_accesses_mean,
+                self.num_copies_mean,
+                self.num_monocopies_mean,
+                self.num_relacq_mean
             ]
         )
 
@@ -89,6 +109,9 @@ def prepare_env():
     ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}" + (":"+ld_library_path if ld_library_path is not None else "")
     os.environ["LD_LIBRARY_PATH"] = ld_library_path_new
 
+    SYMBOLIZER_PATH = f"{LLVM_BUILD_PATH}/bin/llvm-symbolizer"
+    os.environ["TSAN_SYMBOLIZER_PATH"] = SYMBOLIZER_PATH
+
 
 def find_zsh():
     global ZSH_PATH
@@ -103,6 +126,22 @@ def prepare_report_file():
     with open(REPORT_FILE_PATH, "w") as f:
         writer = csv.writer(f)
         writer.writerow(TestAggStats.header())
+
+def parse_extra_stats(prefix: str, output: str):
+    start = len(output) - 1
+    while start >= 0:
+        if prefix in output[start].decode():
+            break
+        start -= 1
+
+    if start >= 0:
+        line = output[start].decode()
+        prefix_start = line.index(prefix)
+        stat = int(line[prefix_start+len(prefix):].split(" ")[0])
+    else:
+        stat = 0
+
+    return stat
 
 def run_test(test, test_set_name):
     global ZSH_PATH
@@ -149,32 +188,13 @@ TIMEFMT='=== REPORT\n'\
         memory_usage = int(time_report_lines[8].split()[2].decode())
 
         TSAN_REPORT_PREFIX = "ThreadSanitizer: reported "
-        tsan_report_start = len(output) - 1
-        while tsan_report_start >= 0:
-            if TSAN_REPORT_PREFIX in output[tsan_report_start].decode():
-                break
-            tsan_report_start -= 1
+        tsan_num_warnings = parse_extra_stats(TSAN_REPORT_PREFIX, output)
 
-        if tsan_report_start >= 0:
-            tsan_report_line = output[tsan_report_start].decode()
-            prefix_start = tsan_report_line.index(TSAN_REPORT_PREFIX)
-            tsan_num_warnings = int(tsan_report_line[prefix_start+len(TSAN_REPORT_PREFIX):].split(" ")[0])
-        else:
-            tsan_num_warnings = 0
-
-        # SAMPLING_COUNTER_PREFIX = "Sampling Counter: "
-        # sampling_counter_start = len(output) - 1
-        # while sampling_counter_start >= 0:
-        #     if SAMPLING_COUNTER_PREFIX in output[sampling_counter_start].decode():
-        #         break
-        #     sampling_counter_start -= 1
-
-        # if sampling_counter_start >= 0:
-        #     sampling_counter_line = output[sampling_counter_start].decode()
-        #     prefix_start = sampling_counter_line.index(SAMPLING_COUNTER_PREFIX)
-        #     sampling_counter = int(sampling_counter_line[prefix_start+len(SAMPLING_COUNTER_PREFIX):].split(" ")[0])
-        # else:
-        #     sampling_counter = 0
+        num_locks = parse_extra_stats("Num Locks: ", output)
+        num_accesses = parse_extra_stats("Num Accesses: ", output)
+        num_copies = parse_extra_stats("Num Copies: ", output)
+        num_monocopies = parse_extra_stats("Num MonoCopies: ", output)
+        num_relacq = parse_extra_stats("Num relacq: ", output)
 
         # print("Sampling Counter:", sampling_counter)
         print("Duration:", real_duration)
@@ -188,7 +208,12 @@ TIMEFMT='=== REPORT\n'\
                          test_cmd=test_cmd,
                          duration=real_duration,
                          memory_usage=memory_usage,
-                         tsan_num_warnings=tsan_num_warnings)
+                         tsan_num_warnings=tsan_num_warnings,
+                         num_locks=num_locks,
+                         num_accesses=num_accesses,
+                         num_copies=num_copies,
+                         num_monocopies=num_monocopies,
+                         num_relacq=num_relacq)
 
 # aggregates the stats after running a test case N times
 def aggregate_test_stats(tests_stats: List[TestStats]):
@@ -208,6 +233,17 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     warnings_stdev = statistics.stdev(tsan_num_warnings_list)
     warnings_median = statistics.median(tsan_num_warnings_list)
 
+    num_locks_list = list(map(lambda ts: ts.num_locks, tests_stats))
+    num_accesses_list = list(map(lambda ts: ts.num_accesses, tests_stats))
+    num_copies_list = list(map(lambda ts: ts.num_copies, tests_stats))
+    num_monocopies_list = list(map(lambda ts: ts.num_monocopies, tests_stats))
+    num_relacq_list = list(map(lambda ts: ts.num_relacq, tests_stats))
+    num_locks_mean = statistics.mean(num_locks_list)
+    num_accesses_mean = statistics.mean(num_accesses_list)
+    num_copies_mean = statistics.mean(num_copies_list)
+    num_monocopies_mean = statistics.mean(num_monocopies_list)
+    num_relacq_mean = statistics.mean(num_relacq_list)
+
     return TestAggStats(tests_stats[0].test_name,
                         tests_stats[0].test_cmd,
                         duration_mean,
@@ -218,7 +254,12 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         memory_median,
                         warnings_mean,
                         warnings_stdev,
-                        warnings_median)
+                        warnings_median,
+                        num_locks_mean,
+                        num_accesses_mean,
+                        num_copies_mean,
+                        num_monocopies_mean,
+                        num_relacq_mean)
 
 def output_aggregate_stats(test_agg_stats: TestAggStats):
     with open(REPORT_FILE_PATH, "a") as f:

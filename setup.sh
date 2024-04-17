@@ -43,6 +43,7 @@ install_dependencies() {
     sudo apt install -y libboost-all-dev
     sudo apt install -y libmpich-dev
     sudo apt install -y zsh                 # used by runner.py
+    sudo apt install -y nasm                # by ffmpeg
 }
 
 build_ompscr() {
@@ -172,12 +173,14 @@ build_c11_mabain() {
     sed -i "s*mkdir ./tmp_dir**g" compile.sh
     sed -i "s*MABAIN_INSTALL_DIR) -lmabain*MABAIN_INSTALL_DIR)/lib -lmabain*g" examples/Makefile
     sed -i "s*Werror*Wno-error*g" examples/Makefile
+    sed -i "s*Werror*Wno-error*g" binaries/Makefile
+    sed -i "s*Werror*Wno-error*g" src/Makefile
 
     ./compile.sh
 
     rm -rf $ROOT_BIN/mabain
     mkdir $ROOT_BIN/mabain
-    
+
     mv examples/mb_insert_test $ROOT_BIN/mabain
     mv examples/mb_iterator_test $ROOT_BIN/mabain
     mv examples/mb_longest_prefix_test $ROOT_BIN/mabain
@@ -280,7 +283,7 @@ build_c11_benchmarks() {
     build_c11_mabain
     build_c11_gdax
     build_c11_cdschecker
-    
+
     cd $ROOT
 }
 
@@ -691,6 +694,116 @@ build_graphchi() {
     cd $ROOT
 }
 
+build_cray() {
+    cd $ROOT_BUILD
+
+    rm -rf c-ray-1.1
+    wget http://www.phoronix-test-suite.com/benchmark-files/c-ray-1.1.tar.gz
+    tar -xzvf c-ray-1.1.tar.gz
+    rm c-ray-1.1.tar.gz
+
+    cd c-ray-1.1
+    $CC -o c-ray-mt c-ray-mt.c -lm -lpthread -O3 $CFLAGS $TSAN_FLAGS
+
+    rm -rf $ROOT_BIN/c-ray
+    mkdir $ROOT_BIN/c-ray
+
+    cp c-ray-mt $ROOT_BIN/c-ray
+    cp sphfract $ROOT_BIN/c-ray
+
+    echo "#!/bin/sh
+RT_THREADS=\$((\`nproc\` * 1))
+./c-ray-mt -t \$RT_THREADS -s 1600x1200 -r 8 -i sphfract -o output.ppm
+echo \$? > ~/test-exit-status" > $ROOT_BIN/c-ray/c-ray
+chmod +x $ROOT_BIN/c-ray/c-ray
+
+    cd $ROOT
+}
+
+build_graphicsmagick() {
+    cd $ROOT_BUILD
+
+    rm -rf GraphicsMagick-1.3.43
+    wget https://nchc.dl.sourceforge.net/project/graphicsmagick/graphicsmagick/1.3.43/GraphicsMagick-1.3.43.tar.xz
+    tar -xf GraphicsMagick-1.3.43.tar.xz
+    rm GraphicsMagick-1.3.43.tar.xz
+
+    cd GraphicsMagick-1.3.43
+
+    rm -rf $ROOT_BIN/graphicsmagick
+    mkdir $ROOT_BIN/graphicsmagick
+
+    CC=$CC CXX=$CXX LDFLAGS="-L$ROOT_BUILD/GraphicsMagick-1.3.43/lib -L$LIBOMP_LIB_PATH $TSAN_FLAGS" CPPFLAGS="-I$ROOT_BUILD/GraphicsMagick-1.3.43/include -fopenmp -I$LIBOMP_INCLUDE_PATH $TSAN_FLAGS" \
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" \
+    ./configure --without-perl --prefix=$ROOT_BIN/graphicsmagick --without-png
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" make -j`nproc`
+    make install
+
+    cd $ROOT_BIN/graphicsmagick
+    wget http://phoronix-test-suite.com/benchmark-files/sample-photo-6000x4000-1.zip
+    unzip -o sample-photo-6000x4000-1.zip
+
+    cd $ROOT
+}
+
+build_llama_cpp() {
+    cd $ROOT_BUILD
+
+    rm -rf llama.cpp-b1808
+    wget https://github.com/ggerganov/llama.cpp/archive/refs/tags/b1808.tar.gz
+    tar -xzvf b1808.tar.gz
+    rm b1808.tar.gz
+
+    cd llama.cpp-b1808
+
+    wget https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v0.3.27.zip
+    unzip v0.3.27.zip
+    rm v0.3.27.zip
+
+    cd OpenBLAS-0.3.27
+    CC=$CC CXX=$CXX CFLAGS="" CXXFLAGS="" LDFLAGS="" make -j`nproc`
+    cd ..
+
+    CC=$CC CXX=$CXX CFLAGS="$TSAN_FLAGS -IOpenBLAS-0.3.27/" CXXFLAGS="$TSAN_FLAGS -IOpenBLAS-0.3.27/" LDFLAGS="$TSAN_FLAGS -LOpenBLAS-0.3.27/ -lopenblas" make -j`nproc` LLAMA_OPENBLAS=1
+
+    rm -rf $ROOT_BIN/llama-cpp
+    mkdir $ROOT_BIN/llama-cpp
+    cp OpenBLAS-0.3.27/libopenblas.so $ROOT_BIN/llama-cpp
+    cp OpenBLAS-0.3.27/libopenblas.so.0 $ROOT_BIN/llama-cpp
+    cp main $ROOT_BIN/llama-cpp
+
+    cd $ROOT_BIN/llama-cpp
+    wget 'https://huggingface.co/TheBloke/Llama-2-7B-GGUF/resolve/b4e04e128f421c93a5f1e34ac4d7ca9b0af47b80/llama-2-7b.Q4_0.gguf'
+
+    cd $ROOT
+}
+
+build_ffmpeg() {
+    cd $ROOT_BUILD
+
+    rm -rf ffmpeg-7.0
+    wget https://ffmpeg.org/releases/ffmpeg-7.0.tar.xz
+    tar -xf ffmpeg-7.0.tar.xz
+    rm ffmpeg-7.0.tar.xz
+
+    cd ffmpeg-7.0
+
+    rm -rf $ROOT_BIN/ffmpeg
+    mkdir $ROOT_BIN/ffmpeg
+
+    cc=$CC cxx=$CXX LDFLAGS="$TSAN_FLAGS" CFLAGS="-g $TSAN_FLAGS" CPPFLAGS="-g $TSAN_FLAGS" \
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu" \
+    ./configure --prefix=$ROOT_BIN/ffmpeg
+
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu" make -j`nproc`
+    make install
+
+    cd $ROOT_BIN/ffmpeg
+    wget http://ftp.nluug.nl/pub/graphics/blender/demo/movies/ToS/tears_of_steel_720p.mov
+
+    cd $ROOT
+}
+
 rm -rf $ROOT_BUILD
 rm -rf $ROOT_BIN
 mkdir $ROOT_BUILD
@@ -716,6 +829,10 @@ build_amg &
 build_gromacs &
 build_graph500 &
 build_graphchi &
+build_cray &
+build_graphicsmagick &
+build_ffmpeg &
+build_llama_cpp &
 
 wait
 echo "[+] Finished building all benchmarks!"

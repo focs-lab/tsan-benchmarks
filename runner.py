@@ -13,7 +13,7 @@ from typing import List
 DEBUG = False
 BUILT_PROGRAMS_PATH = "bin"            # where the built programs are located (currently in bin)
 # REPORT_FILE_PATH = "report.csv"
-TIMEOUT = 600
+# TIMEOUT = 600
 
 
 @dataclass
@@ -157,7 +157,7 @@ def parse_extra_stats(prefix: str, output: str):
 
     return stat
 
-def run_test(test, test_set_name):
+def run_test(test, test_set_name, timeout):
     global ZSH_PATH
     assert ZSH_PATH is not None
 
@@ -185,7 +185,7 @@ TIMEFMT='=== REPORT\n'\
 
         process.stdin.write(time_report_format)
         process.stdin.write(f"cd {BUILT_PROGRAMS_PATH}/{test_set_name}\n".encode())
-        process.stdin.write(f"time timeout --signal=SIGINT {TIMEOUT} {test_cmd}\n{test_cleanup}\nexit\n".encode())
+        process.stdin.write(f"time timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
         process.stdin.write(b"exit\n")
         process.stdin.close()
 
@@ -313,9 +313,11 @@ def run_tests():
             print(f"[!] Invalid number of test iterations: {sys.argv[2]}")
             sys.exit(1)
 
+    timeout = int(testcases[category]["timeout"])
     print(f"[*] Running **{category}** test cases")
     print(f"[*] Running each test case {test_num_iters} times")
-    testcases = testcases[category]
+    print(f"[*] Timeout: {timeout}s")
+    testcases = testcases[category]["tests"]
     for test_set in testcases:
         test_set_name = test_set["name"]
         tests = test_set["tests"]
@@ -324,7 +326,7 @@ def run_tests():
         for test in tests:
             tests_stats: List[TestStats] = []
             for _ in range(test_num_iters):
-                test_stats = run_test(test, test_set_name)
+                test_stats = run_test(test, test_set_name, timeout)
                 tests_stats.append(test_stats)
 
             test_agg_stats = aggregate_test_stats(tests_stats)

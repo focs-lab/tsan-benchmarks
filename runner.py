@@ -12,7 +12,7 @@ from typing import List
 
 DEBUG = False
 BUILT_PROGRAMS_PATH = "bin"            # where the built programs are located (currently in bin)
-REPORT_FILE_PATH = "report.csv"
+# REPORT_FILE_PATH = "report.csv"
 TIMEOUT = 600
 
 
@@ -88,28 +88,39 @@ class TestAggStats:
             ]
         )
 
+def load_runtimes():
+    testcases_yaml = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
+    runtimes = testcases_yaml["runtimes"]
+    return runtimes
 
-def prepare_env():
-    LLVM_BUILD_PATH = os.getenv("CUSTOM_LLVM_BUILD_PATH")
-    if LLVM_BUILD_PATH is None:
-        print("[!] CUSTOM_LLVM_BUILD_PATH is not set in the environment.")
-        print('[!] Please set $CUSTOM_LLVM_BUILD_PATH to the directory of your custom LLVM build. E.g.')
-        print('export CUSTOM_LLVM_BUILD_PATH=/home/daniel/llvm-project/build')
-        sys.exit(1)
 
-    LIBOMP_LIB_PATH = f"{LLVM_BUILD_PATH}/runtimes/runtimes-bins/openmp/runtime/src"
+def prepare_env(rt: dict):
+    # LLVM_BUILD_PATH = os.getenv("CUSTOM_LLVM_BUILD_PATH")
+    # if LLVM_BUILD_PATH is None:
+    #     print("[!] CUSTOM_LLVM_BUILD_PATH is not set in the environment.")
+    #     print('[!] Please set $CUSTOM_LLVM_BUILD_PATH to the directory of your custom LLVM build. E.g.')
+    #     print('export CUSTOM_LLVM_BUILD_PATH=/home/daniel/llvm-project/build')
+    #     sys.exit(1)
+
+    LIBOMP_LIB_PATH = rt["openmp"]
     if not pathlib.Path(LIBOMP_LIB_PATH).exists():
-        print("[!] OpenMP is not found in the custom LLVM build. Please build it before proceeding. The following cmake command builds the TSAN and OpenMP components in LLVM.")
+        print(f"[!] libomp.so is not found in the path {LIBOMP_LIB_PATH}. Please ensure that it exists before proceeding.")
+        print("The following cmake command builds the TSan and OpenMP components in LLVM.")
         print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
         sys.exit(1)
 
-    LIBCLANGRT_LIB_PATH = f"{LLVM_BUILD_PATH}/lib/clang/19/lib/x86_64-unknown-linux-gnu"
+    LIBCLANGRT_LIB_PATH = rt["compiler-rt"]
+    if not pathlib.Path(LIBCLANGRT_LIB_PATH).exists():
+        print(f"[!] libclang_r.tsan.so is not found in the path {LIBCLANGRT_LIB_PATH}. Please ensure that it exists before proceeding.")
+        print("The following cmake command builds the TSan and OpenMP components in LLVM.")
+        print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
+        sys.exit(1)
 
     ld_library_path = os.getenv("LD_LIBRARY_PATH")
     ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}" + (":"+ld_library_path if ld_library_path is not None else "")
     os.environ["LD_LIBRARY_PATH"] = ld_library_path_new
 
-    SYMBOLIZER_PATH = f"{LLVM_BUILD_PATH}/bin/llvm-symbolizer"
+    SYMBOLIZER_PATH = rt["symbolizer"]
     os.environ["TSAN_SYMBOLIZER_PATH"] = SYMBOLIZER_PATH
 
 
@@ -122,7 +133,10 @@ def find_zsh():
         print("[!] Please install it with `sudo apt install -y zsh` to proceed.")
         sys.exit(1)
 
-def prepare_report_file():
+def prepare_report_file(rt_name: str):
+    global REPORT_FILE_PATH
+    REPORT_FILE_PATH = f"report-{rt_name}.csv"
+
     with open(REPORT_FILE_PATH, "w") as f:
         writer = csv.writer(f)
         writer.writerow(TestAggStats.header())
@@ -262,13 +276,15 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         num_relacq_mean)
 
 def output_aggregate_stats(test_agg_stats: TestAggStats):
+    global REPORT_FILE_PATH
     with open(REPORT_FILE_PATH, "a") as f:
         writer = csv.writer(f)
         writer.writerow(test_agg_stats.as_row())
 
 
 def run_tests():
-    testcases = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
+    testcases_yaml = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
+    testcases = testcases_yaml["tests"]
     testcases_categories = list(testcases.keys())
     print("[*] Loaded testcases from testcases.yml")
 
@@ -316,10 +332,20 @@ def run_tests():
 
 
 def main():
-    prepare_env()
     find_zsh()
-    prepare_report_file()
-    run_tests()
+
+    runtimes = load_runtimes()
+    for rt in runtimes:
+        print(f"=== Using runtime [{rt['name']}] for benchmarks ===")
+        print(f"OpenMP: {rt['openmp']}")
+        print(f"libclang_rt: {rt['compiler-rt']}")
+        print(f"llvm-symbolizer: {rt['symbolizer']}")
+
+        prepare_env(rt)
+        prepare_report_file(rt["name"])
+        run_tests()
+
+        print("=== Finished running benchmarks for this runtime ===")
 
 
 if __name__ == "__main__":

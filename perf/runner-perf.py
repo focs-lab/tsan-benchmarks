@@ -205,6 +205,8 @@ def prepare_env(rt: dict):
     SYMBOLIZER_PATH = rt["symbolizer"]
     os.environ["TSAN_SYMBOLIZER_PATH"] = SYMBOLIZER_PATH
 
+    os.environ["TSAN_OPTIONS"] = "report_bugs=0"
+
 def prepare_report_file(rt_name: str):
     global REPORT_FILE_PATH
     REPORT_FILE_PATH = f"report-{rt_name}.csv"

@@ -21,10 +21,16 @@ class TestStats:
     test_name: str
     test_cmd: str
     duration: int
+    context_switches: int
+    migrations: int
+    page_faults: int
+    instructions: int
     branches: int
     branch_misses: int
     l1_loads: int
     l1_load_misses: int
+    l2_loads: int
+    l2_load_misses: int
     llc_loads: int
     llc_load_misses: int
 
@@ -32,36 +38,87 @@ class TestStats:
 class TestAggStats:
     test_name: str
     test_cmd: str
+
     duration: float
     duration_stdev: float
+
+    context_switches: float
+    context_switches_stdev: float
+    migrations: float
+    migrations_stdev: float
+    page_faults: float
+    page_faults_stdev: float
+    instructions: float
+    instructions_stdev: float
+
     branches: float
+    branches_stdev: float
     branch_misses: float
+    branch_misses_stdev: float
     branch_miss_rate: float
     branch_miss_rate_stdev: float
+
     l1_loads: float
+    l1_loads_stdev: float
     l1_load_misses: float
+    l1_load_misses_stdev: float
     l1_miss_rate: float
     l1_miss_rate_stdev: float
+
+    l2_loads: float
+    l2_loads_stdev: float
+    l2_load_misses: float
+    l2_load_misses_stdev: float
+    l2_miss_rate: float
+    l2_miss_rate_stdev: float
+
     llc_loads: float
+    llc_loads_stdev: float
     llc_load_misses: float
+    llc_load_misses_stdev: float
     llc_miss_rate: float
     llc_miss_rate_stdev: float
 
     def header():
         return [
             "name",
+
             "duration",
             "duration_stdev",
+            "context_switches",
+            "context_switches_stdev",
+            "migrations",
+            "migrations_stdev",
+            "page_faults",
+            "page_faults_stdev",
+            "instructions",
+            "instructions_stdev",
+
             "branches",
+            "branches_stdev",
             "branch_misses",
+            "branch_misses_stdev",
             "branch_miss_rate",
             "branch_miss_rate_stdev",
+
             "l1_loads",
+            "l1_loads_stdev",
             "l1_load_misses",
+            "l1_load_misses_stdev",
             "l1_miss_rate",
             "l1_miss_rate_stdev",
+
+            "l2_loads",
+            "l2_loads_stdev",
+            "l2_load_misses",
+            "l2_load_misses_stdev",
+            "l2_miss_rate",
+            "l2_miss_rate_stdev",
+
             "llc_loads",
+            "llc_loads_stdev",
             "llc_load_misses",
+            "llc_load_misses_stdev",
             "llc_miss_rate",
             "llc_miss_rate_stdev"
         ]
@@ -70,18 +127,44 @@ class TestAggStats:
         return iter(
             [
                 self.test_name,
+
                 self.duration,
                 self.duration_stdev,
+
+                self.context_switches,
+                self.context_switches_stdev,
+                self.migrations,
+                self.migrations_stdev,
+                self.page_faults,
+                self.page_faults_stdev,
+                self.instructions,
+                self.instructions_stdev,
+
                 self.branches,
+                self.branches_stdev,
                 self.branch_misses,
+                self.branch_misses_stdev,
                 self.branch_miss_rate,
                 self.branch_miss_rate_stdev,
+
                 self.l1_loads,
+                self.l1_loads_stdev,
                 self.l1_load_misses,
+                self.l1_load_misses_stdev,
                 self.l1_miss_rate,
                 self.l1_miss_rate_stdev,
+
+                self.l2_loads,
+                self.l2_loads_stdev,
+                self.l2_load_misses,
+                self.l2_load_misses_stdev,
+                self.l2_miss_rate,
+                self.l2_miss_rate_stdev,
+
                 self.llc_loads,
+                self.llc_loads_stdev,
                 self.llc_load_misses,
+                self.llc_load_misses_stdev,
                 self.llc_miss_rate,
                 self.llc_miss_rate_stdev
             ]
@@ -150,6 +233,8 @@ def parse_perf_stats(keyword: str, output: str):
 
 def run_test(test, test_set_name, timeout):
     BASH_PATH = "/usr/bin/bash"
+    PERF_EVENTS = "context-switches,migrations,page-faults,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L2-loads,L2-load-misses,LLC-loads,LLC-load-misses"
+
     test_name = test["name"]
     test_cmd = test["cmd"]
     test_cleanup = test["cleanup"] if "cleanup" in test.keys() else ""
@@ -161,7 +246,7 @@ def run_test(test, test_set_name, timeout):
 
     with subprocess.Popen(BASH_PATH, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env) as process:
         process.stdin.write(f"cd {BUILT_PROGRAMS_PATH}/{test_set_name}\n".encode())
-        process.stdin.write(f"timeout --signal=SIGINT {timeout} ~/perf/perf stat -d {test_cmd}\n{test_cleanup}\nexit\n".encode())
+        process.stdin.write(f"~/perf/perf stat -e \"{PERF_EVENTS}\" timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
         process.stdin.write(b"exit\n")
         process.stdin.close()
 
@@ -170,56 +255,98 @@ def run_test(test, test_set_name, timeout):
             print(b"\n".join(output).decode())
         print(b"\n".join(output).decode())
 
-        duration = parse_perf_stats("  seconds time elapsed", output)
-        context_switches = parse_perf_stats("  context-switches", output)
+        duration = parse_perf_stats("seconds time elapsed", output)
+        context_switches = parse_perf_stats("context-switches", output)
+        migrations = parse_perf_stats("migrations", output)
+        page_faults = parse_perf_stats("page-faults", output)
+        instructions = parse_perf_stats("instructions", output)
         branches = parse_perf_stats("  branches", output)
         branch_misses = parse_perf_stats("branch-misses", output)
         l1_loads = parse_perf_stats("L1-dcache-loads", output)
         l1_load_misses = parse_perf_stats("L1-dcache-load-misses", output)
+        l2_loads = parse_perf_stats("L2-loads", output)
+        l2_load_misses = parse_perf_stats("L2-load-misses", output)
         llc_loads = parse_perf_stats("LLC-loads", output)
         llc_load_misses = parse_perf_stats("LLC-load-misses", output)
 
         print("Branches:", branches, branch_misses, branch_misses/branches)
         print("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
+        print("L2:", l2_loads, l2_load_misses, l2_load_misses/l2_loads)
         print("LLC:", llc_loads, llc_load_misses/llc_loads)
 
         return TestStats(test_name=test_name,
                          test_cmd=test_cmd,
                          duration=duration,
+                         context_switches=context_switches,
+                         migrations=migrations,
+                         page_faults=page_faults,
+                         instructions=instructions,
                          branches=branches,
                          branch_misses=branch_misses,
                          l1_loads=l1_loads,
                          l1_load_misses=l1_load_misses,
+                         l2_loads=l2_loads,
+                         l2_load_misses=l2_load_misses,
                          llc_loads=llc_loads,
                          llc_load_misses=llc_load_misses)
 
 # aggregates the stats after running a test case N times
 def aggregate_test_stats(tests_stats: List[TestStats]):
     duration_list = list(map(lambda ts: ts.duration, tests_stats))
+    context_switches_list = list(map(lambda ts: ts.context_switches, tests_stats))
+    migrations_list = list(map(lambda ts: ts.migrations, tests_stats))
+    page_faults_list = list(map(lambda ts: ts.page_faults, tests_stats))
+    instructions_list = list(map(lambda ts: ts.instructions, tests_stats))
+
     branches_list = list(map(lambda ts: ts.branches, tests_stats))
     branch_misses_list = list(map(lambda ts: ts.branch_misses, tests_stats))
     l1_loads_list = list(map(lambda ts: ts.l1_loads, tests_stats))
     l1_load_misses_list = list(map(lambda ts: ts.l1_load_misses, tests_stats))
+    l2_loads_list = list(map(lambda ts: ts.l2_loads, tests_stats))
+    l2_load_misses_list = list(map(lambda ts: ts.l2_load_misses, tests_stats))
     llc_loads_list = list(map(lambda ts: ts.llc_loads, tests_stats))
     llc_load_misses_list = list(map(lambda ts: ts.llc_load_misses, tests_stats))
 
     duration_mean = statistics.mean(duration_list)
     duration_stdev = statistics.stdev(duration_list)
 
+    context_switches_mean = statistics.mean(context_switches_list)
+    context_switches_stdev = statistics.stdev(context_switches_list)
+    migrations_mean = statistics.mean(migrations_list)
+    migrations_stdev = statistics.stdev(migrations_list)
+    page_faults_mean = statistics.mean(page_faults_list)
+    page_faults_stdev = statistics.stdev(page_faults_list)
+    instructions_mean = statistics.mean(instructions_list)
+    instructions_stdev = statistics.stdev(instructions_list)
+
     branches_mean = statistics.mean(branches_list)
+    branches_stdev = statistics.stdev(branches_list)
     branch_misses_mean = statistics.mean(branch_misses_list)
+    branch_misses_stdev = statistics.stdev(branch_misses_list)
     branch_miss_rates_list = [miss/full for full,miss in zip(branches_list, branch_misses_list)]
     branch_miss_rates_mean = statistics.mean(branch_miss_rates_list)
     branch_miss_rates_stdev = statistics.stdev(branch_miss_rates_list)
 
     l1_loads_mean = statistics.mean(l1_loads_list)
+    l1_loads_stdev = statistics.stdev(l1_loads_list)
     l1_misses_mean = statistics.mean(l1_load_misses_list)
+    l1_misses_stdev = statistics.stdev(l1_load_misses_list)
     l1_miss_rates_list = [miss/full for full,miss in zip(l1_loads_list, l1_load_misses_list)]
     l1_miss_rates_mean = statistics.mean(l1_miss_rates_list)
     l1_miss_rates_stdev = statistics.stdev(l1_miss_rates_list)
 
+    l2_loads_mean = statistics.mean(l2_loads_list)
+    l2_loads_stdev = statistics.stdev(l2_loads_list)
+    l2_misses_mean = statistics.mean(l2_load_misses_list)
+    l2_misses_stdev = statistics.stdev(l2_load_misses_list)
+    l2_miss_rates_list = [miss/full for full,miss in zip(l2_loads_list, l2_load_misses_list)]
+    l2_miss_rates_mean = statistics.mean(l2_miss_rates_list)
+    l2_miss_rates_stdev = statistics.stdev(l2_miss_rates_list)
+
     llc_loads_mean = statistics.mean(llc_loads_list)
+    llc_loads_stdev = statistics.stdev(llc_loads_list)
     llc_misses_mean = statistics.mean(llc_load_misses_list)
+    llc_misses_stdev = statistics.stdev(llc_load_misses_list)
     llc_miss_rates_list = [miss/full for full,miss in zip(llc_loads_list, llc_load_misses_list)]
     llc_miss_rates_mean = statistics.mean(llc_miss_rates_list)
     llc_miss_rates_stdev = statistics.stdev(llc_miss_rates_list)
@@ -229,16 +356,41 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         tests_stats[0].test_cmd,
                         duration=duration_mean,
                         duration_stdev=duration_stdev,
+
+                        context_switches=context_switches_mean,
+                        context_switches_stdev=context_switches_stdev,
+                        migrations=migrations_mean,
+                        migrations_stdev=migrations_stdev,
+                        page_faults=page_faults_mean,
+                        page_faults_stdev=page_faults_stdev,
+                        instructions=instructions_mean,
+                        instructions_stdev=instructions_stdev,
+
                         branches=branches_mean,
+                        branches_stdev=branches_stdev,
                         branch_misses=branch_misses_mean,
+                        branch_misses_stdev=branch_misses_stdev,
                         branch_miss_rate=branch_miss_rates_mean,
                         branch_miss_rate_stdev=branch_miss_rates_stdev,
+
                         l1_loads=l1_loads_mean,
+                        l1_loads_stdev=l1_loads_stdev,
                         l1_load_misses=l1_misses_mean,
+                        l1_load_misses_stdev=l1_misses_stdev,
                         l1_miss_rate=l1_miss_rates_mean,
                         l1_miss_rate_stdev=l1_miss_rates_stdev,
+
+                        l2_loads=l2_loads_mean,
+                        l2_loads_stdev=l2_loads_stdev,
+                        l2_load_misses=l2_misses_mean,
+                        l2_load_misses_stdev=l2_misses_stdev,
+                        l2_miss_rate=l2_miss_rates_mean,
+                        l2_miss_rate_stdev=l2_miss_rates_stdev,
+
                         llc_loads=llc_loads_mean,
+                        llc_loads_stdev=llc_loads_stdev,
                         llc_load_misses=llc_misses_mean,
+                        llc_load_misses_stdev=llc_misses_stdev,
                         llc_miss_rate=llc_miss_rates_mean,
                         llc_miss_rate_stdev=llc_miss_rates_stdev)
 

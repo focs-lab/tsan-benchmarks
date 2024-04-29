@@ -252,7 +252,7 @@ def run_test(test, test_set_name, timeout):
 
     with subprocess.Popen(BASH_PATH, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env) as process:
         process.stdin.write(f"cd {BUILT_PROGRAMS_PATH}/{test_set_name}\n".encode())
-        process.stdin.write(f"~/perf/perf stat -e \"{PERF_EVENTS}\" timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
+        process.stdin.write(f"perf stat -e \"{PERF_EVENTS}\" timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
         process.stdin.write(b"exit\n")
         process.stdin.close()
 

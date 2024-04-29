@@ -33,6 +33,7 @@ class TestStats:
     l2_load_misses: int
     llc_loads: int
     llc_load_misses: int
+    mem_loads: int
 
 @dataclass
 class TestAggStats:
@@ -79,6 +80,9 @@ class TestAggStats:
     llc_miss_rate: float
     llc_miss_rate_stdev: float
 
+    mem_loads: float
+    mem_loads_stdev: float
+
     def header():
         return [
             "name",
@@ -120,7 +124,10 @@ class TestAggStats:
             "llc_load_misses",
             "llc_load_misses_stdev",
             "llc_miss_rate",
-            "llc_miss_rate_stdev"
+            "llc_miss_rate_stdev",
+
+            "mem_loads",
+            "mem_loads_stdev"
         ]
 
     def as_row(self):
@@ -166,7 +173,10 @@ class TestAggStats:
                 self.llc_load_misses,
                 self.llc_load_misses_stdev,
                 self.llc_miss_rate,
-                self.llc_miss_rate_stdev
+                self.llc_miss_rate_stdev,
+
+                self.mem_loads,
+                self.mem_loads_stdev
             ]
         )
 
@@ -270,6 +280,7 @@ def run_test(test, test_set_name, timeout):
         l2_load_misses = parse_perf_stats("L2-load-misses", output)
         llc_loads = parse_perf_stats("LLC-loads", output)
         llc_load_misses = parse_perf_stats("LLC-load-misses", output)
+        mem_loads = parse_perf_stats("mem-loads:p", output)
 
         print("Branches:", branches, branch_misses, branch_misses/branches)
         print("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
@@ -308,6 +319,7 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     l2_load_misses_list = list(map(lambda ts: ts.l2_load_misses, tests_stats))
     llc_loads_list = list(map(lambda ts: ts.llc_loads, tests_stats))
     llc_load_misses_list = list(map(lambda ts: ts.llc_load_misses, tests_stats))
+    mem_loads_list = list(map(lambda ts: ts.mem_loads, tests_stats))
 
     duration_mean = statistics.mean(duration_list)
     duration_stdev = statistics.stdev(duration_list)
@@ -353,6 +365,9 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     llc_miss_rates_mean = statistics.mean(llc_miss_rates_list)
     llc_miss_rates_stdev = statistics.stdev(llc_miss_rates_list)
 
+    mem_loads_mean = statistics.mean(mem_loads_list)
+    mem_loads_stdev = statistics.stdev(mem_loads_list)
+
 
     return TestAggStats(tests_stats[0].test_name,
                         tests_stats[0].test_cmd,
@@ -394,7 +409,10 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         llc_load_misses=llc_misses_mean,
                         llc_load_misses_stdev=llc_misses_stdev,
                         llc_miss_rate=llc_miss_rates_mean,
-                        llc_miss_rate_stdev=llc_miss_rates_stdev)
+                        llc_miss_rate_stdev=llc_miss_rates_stdev,
+
+                        mem_loads=mem_loads_mean,
+                        mem_loads_stdev=mem_loads_stdev)
 
 def output_aggregate_stats(test_agg_stats: TestAggStats):
     global REPORT_FILE_PATH

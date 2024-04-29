@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #SBATCH -C xcne
-#SBATCH --time=0-16
+#SBATCH --time=0-32
 #SBATCH --partition=long
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32

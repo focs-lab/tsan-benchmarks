@@ -224,6 +224,10 @@ def parse_perf_stats(keyword: str, output: str):
 
     if start >= 0:
         line: str = output[start].decode()
+
+        if "not counted" in line:
+            return 1        # just to prevent division by 0
+
         num = line.split()[0].replace(",", "")
         if "." in num:
             return int(float(num) * 1000)

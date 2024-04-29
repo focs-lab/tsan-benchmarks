@@ -29,11 +29,8 @@ class TestStats:
     branch_misses: int
     l1_loads: int
     l1_load_misses: int
-    l2_loads: int
-    l2_load_misses: int
     llc_loads: int
     llc_load_misses: int
-    mem_loads: int
 
 @dataclass
 class TestAggStats:
@@ -66,22 +63,12 @@ class TestAggStats:
     l1_miss_rate: float
     l1_miss_rate_stdev: float
 
-    l2_loads: float
-    l2_loads_stdev: float
-    l2_load_misses: float
-    l2_load_misses_stdev: float
-    l2_miss_rate: float
-    l2_miss_rate_stdev: float
-
     llc_loads: float
     llc_loads_stdev: float
     llc_load_misses: float
     llc_load_misses_stdev: float
     llc_miss_rate: float
     llc_miss_rate_stdev: float
-
-    mem_loads: float
-    mem_loads_stdev: float
 
     def header():
         return [
@@ -112,22 +99,12 @@ class TestAggStats:
             "l1_miss_rate",
             "l1_miss_rate_stdev",
 
-            "l2_loads",
-            "l2_loads_stdev",
-            "l2_load_misses",
-            "l2_load_misses_stdev",
-            "l2_miss_rate",
-            "l2_miss_rate_stdev",
-
             "llc_loads",
             "llc_loads_stdev",
             "llc_load_misses",
             "llc_load_misses_stdev",
             "llc_miss_rate",
-            "llc_miss_rate_stdev",
-
-            "mem_loads",
-            "mem_loads_stdev"
+            "llc_miss_rate_stdev"
         ]
 
     def as_row(self):
@@ -161,22 +138,12 @@ class TestAggStats:
                 self.l1_miss_rate,
                 self.l1_miss_rate_stdev,
 
-                self.l2_loads,
-                self.l2_loads_stdev,
-                self.l2_load_misses,
-                self.l2_load_misses_stdev,
-                self.l2_miss_rate,
-                self.l2_miss_rate_stdev,
-
                 self.llc_loads,
                 self.llc_loads_stdev,
                 self.llc_load_misses,
                 self.llc_load_misses_stdev,
                 self.llc_miss_rate,
-                self.llc_miss_rate_stdev,
-
-                self.mem_loads,
-                self.mem_loads_stdev
+                self.llc_miss_rate_stdev
             ]
         )
 
@@ -234,10 +201,6 @@ def parse_perf_stats(keyword: str, output: str):
 
     if start >= 0:
         line: str = output[start].decode()
-
-        if "not counted" in line:
-            return 1        # just to prevent division by 0
-
         num = line.split()[0].replace(",", "")
         if "." in num:
             return int(float(num) * 1000)
@@ -249,7 +212,7 @@ def parse_perf_stats(keyword: str, output: str):
 
 def run_test(test, test_set_name, timeout):
     BASH_PATH = "/usr/bin/bash"
-    PERF_EVENTS = "context-switches,migrations,page-faults,instructions,branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses,L2-loads,L2-load-misses,LLC-loads,LLC-load-misses"
+    PERF_EVENTS = "{L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses},{branches,branch-misses},instructions,context-switches,migrations,page-faults"
 
     test_name = test["name"]
     test_cmd = test["cmd"]
@@ -280,15 +243,11 @@ def run_test(test, test_set_name, timeout):
         branch_misses = parse_perf_stats("branch-misses", output)
         l1_loads = parse_perf_stats("L1-dcache-loads", output)
         l1_load_misses = parse_perf_stats("L1-dcache-load-misses", output)
-        l2_loads = parse_perf_stats("L2-loads", output)
-        l2_load_misses = parse_perf_stats("L2-load-misses", output)
         llc_loads = parse_perf_stats("LLC-loads", output)
         llc_load_misses = parse_perf_stats("LLC-load-misses", output)
-        mem_loads = parse_perf_stats("mem-loads:p", output)
 
         print("Branches:", branches, branch_misses, branch_misses/branches)
         print("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
-        print("L2:", l2_loads, l2_load_misses, l2_load_misses/l2_loads)
         print("LLC:", llc_loads, llc_load_misses/llc_loads)
 
         return TestStats(test_name=test_name,
@@ -302,8 +261,6 @@ def run_test(test, test_set_name, timeout):
                          branch_misses=branch_misses,
                          l1_loads=l1_loads,
                          l1_load_misses=l1_load_misses,
-                         l2_loads=l2_loads,
-                         l2_load_misses=l2_load_misses,
                          llc_loads=llc_loads,
                          llc_load_misses=llc_load_misses)
 
@@ -319,11 +276,8 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     branch_misses_list = list(map(lambda ts: ts.branch_misses, tests_stats))
     l1_loads_list = list(map(lambda ts: ts.l1_loads, tests_stats))
     l1_load_misses_list = list(map(lambda ts: ts.l1_load_misses, tests_stats))
-    l2_loads_list = list(map(lambda ts: ts.l2_loads, tests_stats))
-    l2_load_misses_list = list(map(lambda ts: ts.l2_load_misses, tests_stats))
     llc_loads_list = list(map(lambda ts: ts.llc_loads, tests_stats))
     llc_load_misses_list = list(map(lambda ts: ts.llc_load_misses, tests_stats))
-    mem_loads_list = list(map(lambda ts: ts.mem_loads, tests_stats))
 
     duration_mean = statistics.mean(duration_list)
     duration_stdev = statistics.stdev(duration_list)
@@ -353,14 +307,6 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     l1_miss_rates_mean = statistics.mean(l1_miss_rates_list)
     l1_miss_rates_stdev = statistics.stdev(l1_miss_rates_list)
 
-    l2_loads_mean = statistics.mean(l2_loads_list)
-    l2_loads_stdev = statistics.stdev(l2_loads_list)
-    l2_misses_mean = statistics.mean(l2_load_misses_list)
-    l2_misses_stdev = statistics.stdev(l2_load_misses_list)
-    l2_miss_rates_list = [miss/full for full,miss in zip(l2_loads_list, l2_load_misses_list)]
-    l2_miss_rates_mean = statistics.mean(l2_miss_rates_list)
-    l2_miss_rates_stdev = statistics.stdev(l2_miss_rates_list)
-
     llc_loads_mean = statistics.mean(llc_loads_list)
     llc_loads_stdev = statistics.stdev(llc_loads_list)
     llc_misses_mean = statistics.mean(llc_load_misses_list)
@@ -368,9 +314,6 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     llc_miss_rates_list = [miss/full for full,miss in zip(llc_loads_list, llc_load_misses_list)]
     llc_miss_rates_mean = statistics.mean(llc_miss_rates_list)
     llc_miss_rates_stdev = statistics.stdev(llc_miss_rates_list)
-
-    mem_loads_mean = statistics.mean(mem_loads_list)
-    mem_loads_stdev = statistics.stdev(mem_loads_list)
 
 
     return TestAggStats(tests_stats[0].test_name,
@@ -401,22 +344,12 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         l1_miss_rate=l1_miss_rates_mean,
                         l1_miss_rate_stdev=l1_miss_rates_stdev,
 
-                        l2_loads=l2_loads_mean,
-                        l2_loads_stdev=l2_loads_stdev,
-                        l2_load_misses=l2_misses_mean,
-                        l2_load_misses_stdev=l2_misses_stdev,
-                        l2_miss_rate=l2_miss_rates_mean,
-                        l2_miss_rate_stdev=l2_miss_rates_stdev,
-
                         llc_loads=llc_loads_mean,
                         llc_loads_stdev=llc_loads_stdev,
                         llc_load_misses=llc_misses_mean,
                         llc_load_misses_stdev=llc_misses_stdev,
                         llc_miss_rate=llc_miss_rates_mean,
-                        llc_miss_rate_stdev=llc_miss_rates_stdev,
-
-                        mem_loads=mem_loads_mean,
-                        mem_loads_stdev=mem_loads_stdev)
+                        llc_miss_rate_stdev=llc_miss_rates_stdev)
 
 def output_aggregate_stats(test_agg_stats: TestAggStats):
     global REPORT_FILE_PATH

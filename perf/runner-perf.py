@@ -12,6 +12,7 @@ from typing import List
 
 DEBUG = False
 BUILT_PROGRAMS_PATH = "../bin"            # where the built programs are located (currently in ../bin)
+HAS_PERF = True
 # REPORT_FILE_PATH = "report.csv"
 # TIMEOUT = 600
 
@@ -21,6 +22,7 @@ class TestStats:
     test_name: str
     test_cmd: str
     duration: int
+    num_warnings: int
     context_switches: int
     migrations: int
     page_faults: int
@@ -39,6 +41,9 @@ class TestAggStats:
 
     duration: float
     duration_stdev: float
+
+    num_warnings: float
+    num_warnings_stdev: float
 
     context_switches: float
     context_switches_stdev: float
@@ -76,6 +81,10 @@ class TestAggStats:
 
             "duration",
             "duration_stdev",
+
+            "num_warnings",
+            "num_warnings_stdev",
+
             "context_switches",
             "context_switches_stdev",
             "migrations",
@@ -114,6 +123,9 @@ class TestAggStats:
 
                 self.duration,
                 self.duration_stdev,
+
+                self.num_warnings,
+                self.num_warnings_stdev,
 
                 self.context_switches,
                 self.context_switches_stdev,
@@ -193,6 +205,9 @@ def prepare_report_file(rt_name: str):
         writer.writerow(TestAggStats.header())
 
 def parse_perf_stats(keyword: str, output: str):
+    if not HAS_PERF:
+        return 1            # instead of 0 to prevent division by 0 for miss rate
+
     start = len(output) - 1
     while start >= 0:
         if keyword in output[start].decode():
@@ -205,6 +220,22 @@ def parse_perf_stats(keyword: str, output: str):
         if "." in num:
             return int(float(num) * 1000)
         stat = int(num)
+    else:
+        stat = 0
+
+    return stat
+
+def parse_extra_stats(prefix: str, output: str):
+    start = len(output) - 1
+    while start >= 0:
+        if prefix in output[start].decode():
+            break
+        start -= 1
+
+    if start >= 0:
+        line = output[start].decode()
+        prefix_start = line.index(prefix)
+        stat = int(line[prefix_start+len(prefix):].split(" ")[0])
     else:
         stat = 0
 
@@ -224,8 +255,10 @@ def run_test(test, test_set_name, timeout):
             test_env[e["name"]] = str(e["value"])
 
     with subprocess.Popen(BASH_PATH, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env) as process:
+        perf_prefix = f"perf stat -e \"{PERF_EVENTS}\" " if HAS_PERF else ""
+
         process.stdin.write(f"cd {BUILT_PROGRAMS_PATH}/{test_set_name}\n".encode())
-        process.stdin.write(f"perf stat -e \"{PERF_EVENTS}\" timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
+        process.stdin.write(f"{perf_prefix}timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
         process.stdin.write(b"exit\n")
         process.stdin.close()
 
@@ -246,6 +279,8 @@ def run_test(test, test_set_name, timeout):
         llc_loads = parse_perf_stats("LLC-loads", output)
         llc_load_misses = parse_perf_stats("LLC-load-misses", output)
 
+        tsan_num_warnings = parse_extra_stats("ThreadSanitizer: reported ", output)
+
         print("Branches:", branches, branch_misses, branch_misses/branches)
         print("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
         print("LLC:", llc_loads, llc_load_misses/llc_loads)
@@ -253,6 +288,7 @@ def run_test(test, test_set_name, timeout):
         return TestStats(test_name=test_name,
                          test_cmd=test_cmd,
                          duration=duration,
+                         num_warnings=tsan_num_warnings,
                          context_switches=context_switches,
                          migrations=migrations,
                          page_faults=page_faults,
@@ -267,6 +303,8 @@ def run_test(test, test_set_name, timeout):
 # aggregates the stats after running a test case N times
 def aggregate_test_stats(tests_stats: List[TestStats]):
     duration_list = list(map(lambda ts: ts.duration, tests_stats))
+    num_warnings_list = list(map(lambda ts: ts.num_warnings, tests_stats))
+
     context_switches_list = list(map(lambda ts: ts.context_switches, tests_stats))
     migrations_list = list(map(lambda ts: ts.migrations, tests_stats))
     page_faults_list = list(map(lambda ts: ts.page_faults, tests_stats))
@@ -281,6 +319,9 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
 
     duration_mean = statistics.mean(duration_list)
     duration_stdev = statistics.stdev(duration_list)
+
+    num_warnings_mean = statistics.mean(num_warnings_list)
+    num_warnings_stdev = statistics.stdev(num_warnings_list)
 
     context_switches_mean = statistics.mean(context_switches_list)
     context_switches_stdev = statistics.stdev(context_switches_list)
@@ -320,6 +361,9 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         tests_stats[0].test_cmd,
                         duration=duration_mean,
                         duration_stdev=duration_stdev,
+
+                        num_warnings=num_warnings_mean,
+                        num_warnings_stdev=num_warnings_stdev,
 
                         context_switches=context_switches_mean,
                         context_switches_stdev=context_switches_stdev,

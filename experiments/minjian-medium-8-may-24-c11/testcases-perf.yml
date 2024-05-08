@@ -232,7 +232,7 @@ tests:
             cleanup: rm output.ppm
 
   c11:
-    timeout: 600
+    timeout: 1800
     tests:
       - name: cdschecker
         tests:

@@ -194,7 +194,7 @@ def prepare_env(rt: dict):
     SYMBOLIZER_PATH = rt["symbolizer"]
     os.environ["TSAN_SYMBOLIZER_PATH"] = SYMBOLIZER_PATH
 
-    os.environ["TSAN_OPTIONS"] = "report_bugs=0 ignore_noninstrumented_modules=1"
+    os.environ["TSAN_OPTIONS"] = "ignore_noninstrumented_modules=1"
 
 def prepare_report_file(rt_name: str):
     global REPORT_FILE_PATH

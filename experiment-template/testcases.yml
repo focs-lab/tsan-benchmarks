@@ -1,12 +1,17 @@
+llvm:
+  lib: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-lib
+  symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
+
 runtimes:
-  - name: base-tsan
-    openmp: /home/d/danilws/llvm-builds/llvm-latest-base/build/runtimes/runtimes-bins/openmp/runtime/src
-    compiler-rt: /home/d/danilws/llvm-builds/llvm-latest-base/build/lib/clang/19/lib/x86_64-unknown-linux-gnu
-    symbolizer: /home/d/danilws/llvm-builds/llvm-latest-base/build/bin/llvm-symbolizer
-  - name: custom-tsan
-    openmp: /home/d/danilws/llvm-builds/llvm-latest-treeclocks/build/runtimes/runtimes-bins/openmp/runtime/src
-    compiler-rt: /home/d/danilws/llvm-builds/llvm-latest-treeclocks/build/lib/clang/19/lib/x86_64-unknown-linux-gnu
-    symbolizer: /home/d/danilws/llvm-builds/llvm-latest-treeclocks/build/bin/llvm-symbolizer
+  - name: base
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  - name: base-sse
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+  - name: minjian
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/minjian
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/minjian
 
 tests:
   mini:
@@ -97,11 +102,6 @@ tests:
           - name: DRACC_OMP_020
             cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
 
-      # - name: mabain
-      #   tests:
-      #     - name: mb_rc_test
-      #       cmd: ./mb_rc_test
-
       - name: iris
         tests:
           - name: iris
@@ -174,23 +174,23 @@ tests:
           - name: graphchi_pagerank_facebook
             cmd: bin/example_apps/pagerank file data/facebook_combined.txt niters 5000 filetype edgelist
 
-      - name: c-ray
-        tests:
-          - name: c-ray_8_threads
-            cmd: ./c-ray-mt -t 8 -s 1600x1200 -r 8 -i sphfract -o output.ppm
-            cleanup: rm output.ppm
-          # - name: c-ray-16_threads
-          #   cmd: ./c-ray-mt -t 16 -s 1600x1200 -r 8 -i sphfract -o output.ppm
-          #   cleanup: rm output.ppm
-          - name: c-ray_32_threads
-            cmd: ./c-ray-mt -t 32 -s 1600x1200 -r 8 -i sphfract -o output.ppm
-            cleanup: rm output.ppm
-          # - name: c-ray_64_threads
-          #   cmd: ./c-ray-mt -t 64 -s 1600x1200 -r 8 -i sphfract -o output.ppm
-          #   cleanup: rm output.ppm
-          - name: c-ray_128_threads
-            cmd: ./c-ray-mt -t 128 -s 1600x1200 -r 8 -i sphfract -o output.ppm
-            cleanup: rm output.ppm
+      # - name: c-ray
+      #   tests:
+      #     - name: c-ray_8_threads
+      #       cmd: ./c-ray-mt -t 8 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #       cleanup: rm output.ppm
+      #     # - name: c-ray-16_threads
+      #     #   cmd: ./c-ray-mt -t 16 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #     #   cleanup: rm output.ppm
+      #     - name: c-ray_32_threads
+      #       cmd: ./c-ray-mt -t 32 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #       cleanup: rm output.ppm
+      #     # - name: c-ray_64_threads
+      #     #   cmd: ./c-ray-mt -t 64 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #     #   cleanup: rm output.ppm
+      #     - name: c-ray_128_threads
+      #       cmd: ./c-ray-mt -t 128 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #       cleanup: rm output.ppm
 
       - name: graphicsmagick
         tests:
@@ -231,38 +231,83 @@ tests:
             cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
             cleanup: rm output.ppm
 
-  big:
+  c11:
     timeout: 600
     tests:
+      - name: cdschecker
+        tests:
+          - name: barrier
+            cmd: ./barrier
+
+          - name: chase-lev-deque
+            cmd: ./chase-lev-deque
+
+          - name: dekker-fences
+            cmd: ./dekker-fences
+
+          - name: linuxrwlocks
+            cmd: ./linuxrwlocks
+
+          - name: mcs-lock
+            cmd: ./mcs-lock
+
+          - name: mpmc-queue
+            cmd: ./mpmc-queue
+
+          - name: ms-queue
+            cmd: ./ms-queue
+
+          - name: spsc-queue
+            cmd: ./spsc-queue
+
+      - name: silo
+        tests:
+          - name: silo_dbtest
+            lib_paths:
+              - ./
+            cmd: ./dbtest
+
+      - name: iris
+        tests:
+          - name: iris
+            cmd: ./test2
+
+      - name: gdax
+        tests:
+          - name: gdax
+            lib_paths:
+              - ./dependencies/libcds-2.3.2/build-release/bin
+            cmd: ./demo
+
+      - name: mabain
+        tests:
+          - name: mb_rc_test
+            lib_paths:
+              - ./install/lib
+            cmd: ./mb_rc_test
+
+  temp:
+    timeout: 15
+    tests:
+
+      - name: miniFE
+        tests:
+          - name: miniFE
+            cmd: ./miniFE.x
+            cleanup: rm miniFE.*.yaml
+
+      - name: silo
+        tests:
+          - name: silo_dbtest
+            cmd: ./dbtest
+
+      - name: mabain
+        tests:
+          - name: mb_rc_test
+            cmd: ./mb_rc_test
+
       - name: ffmpeg
         tests:
           - name: ffmpeg_mov_to_mp4_16_threads
             cmd: bin/ffmpeg -y -threads 16 -i tears_of_steel_720p.mov output.mp4
             cleanup: rm output.mp4
-
-    # - name: silo
-    #   tests:
-    #     - name: silo_dbtest
-    #       cmd: ./dbtest
-
-    # - name: gdax
-    #   tests:
-    #     - name: gdax
-    #       cmd: LD_LIBRARY_PATH=./dependencies/libcds-2.3.2/build-release/bin:$LD_LIBRARY_PATH ./demo
-
-    # - name: SimpleMOC
-    #   tests:
-    #     - name: SimpleMOC_small
-    #       cmd: ./SimpleMOC -s
-
-  # temp:
-  #   - name: iris
-  #     tests:
-  #       - name: iris
-  #         cmd: ./test2
-
-  #   - name: miniFE
-  #     tests:
-  #       - name: miniFE
-  #         cmd: ./miniFE.x
-  #         cleanup: rm miniFE.*.yaml

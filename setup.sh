@@ -30,6 +30,23 @@ fi
 
 install_dependencies() {
     echo "[+] Install dependencies (requires sudo):"
+    if [ -f "/etc/redhat-release" ]; then
+    sudo dnf install -y autoconf automake
+    sudo dnf install -y readline readline-devel ncurses ncurses-devel
+    sudo dnf install -y glibc-devel
+    sudo dnf install -y libdb-cxx-devel
+    sudo dnf install -y libaio-devel
+    sudo dnf install -y jemalloc-devel
+    sudo dnf install -y numactl-devel
+    sudo dnf install -y unzip
+    sudo dnf install -y boost-devel
+    sudo dnf install -y mpich-devel
+    sudo dnf install -y zsh
+    sudo dnf install -y nasm
+    sudo dnf install -y openmpi openmpi-devel
+    sudo dnf install -y libstdc++
+    sudo dnf install -y libpng-devel libjpeg-devel
+    else
     sudo apt update
     sudo apt install -y git bc
     sudo apt install -y libncurses5-dev libncursesw5-dev
@@ -44,6 +61,13 @@ install_dependencies() {
     sudo apt install -y libmpich-dev
     sudo apt install -y zsh                 # used by runner.py
     sudo apt install -y nasm                # by ffmpeg
+    fi
+}
+
+prepare_path() {
+    if [ -f "/etc/redhat-release" ]; then
+    export PATH=$PATH:/usr/lib64/openmpi/bin/
+    fi
 }
 
 build_ompscr() {
@@ -622,7 +646,7 @@ build_gromacs() {
     rm -rf $ROOT_BIN/gromacs
     mkdir $ROOT_BIN/gromacs
     mkdir $ROOT_BIN/gromacs/build
-    cmake -B $ROOT_BIN/gromacs/build . -DGMX_BUILD_OWN_FFTW=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=$TSAN_FLAGS -DCMAKE_CXX_FLAGS=$TSAN_FLAGS -DOpenMP_CXX_FLAGS=-I$LIBOMP_INCLUDE_PATH -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src/libomp.so" -DOpenMP_C_FLAGS=-I$LIBOMP_INCLUDE_PATH -DOpenMP_C_LIB_NAMES="libomp" -DBUILD_SHARED_LIBS=ON
+    cmake -B $ROOT_BIN/gromacs/build . -DGMX_BUILD_OWN_FFTW=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$TSAN_FLAGS" -DCMAKE_CXX_FLAGS="$TSAN_FLAGS" -DOpenMP_CXX_FLAGS="-I$LIBOMP_INCLUDE_PATH" -DOpenMP_CXX_LIB_NAMES="libomp" -DOpenMP_libomp_LIBRARY="$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src/libomp.so" -DOpenMP_C_FLAGS="-I$LIBOMP_INCLUDE_PATH" -DOpenMP_C_LIB_NAMES="libomp" -DBUILD_SHARED_LIBS=ON
     make -C $ROOT_BIN/gromacs/build -j12
 
     mkdir $ROOT_BIN/gromacs/testcases
@@ -646,7 +670,7 @@ build_graph500() {
     cd graph500-2.1.4
 
     cp make-incs/make.inc-gcc make.inc
-    sed -i "s*CFLAGS = -g -std=c99*CFLAGS = -g -std=c99 $TSAN_FLAGS*g" make.inc
+    sed -i "s*^CFLAGS = -g -std=c99*CC=$CC -Wno-error=unknown\nCFLAGS = -g -std=c99 $TSAN_FLAGS*g" make.inc
     sed -i "s*LDLIBS = -lm -lrt*LDLIBS = -lm -lrt $TSAN_FLAGS*g" make.inc
     sed -i "s*CPPFLAGS = -DUSE_MMAP_LARGE -DUSE_MMAP_LARGE_EXT*CPPFLAGS = -DUSE_MMAP_LARGE -DUSE_MMAP_LARGE_EXT $TSAN_FLAGS*g" make.inc
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" make.inc
@@ -655,6 +679,8 @@ build_graph500() {
     sed -i "s*LDFLAGS = -O3*LDFLAGS = -O3 $TSAN_FLAGS*g" generator/Makefile.omp
     sed -i "s*-fopenmp*$LIBOMP_FLAGS*g" generator/Makefile.omp
     sed -i "s*gcc*$CC*g" generator/Makefile.omp
+    sed -i "s*cc*$CC*g" generator/Makefile.seq
+    sed -i "s*cc*$CC*g" generator/Makefile.xmt
 
     make
 
@@ -734,9 +760,9 @@ build_graphicsmagick() {
     mkdir $ROOT_BIN/graphicsmagick
 
     CC=$CC CXX=$CXX LDFLAGS="-L$ROOT_BUILD/GraphicsMagick-1.3.43/lib -L$LIBOMP_LIB_PATH $TSAN_FLAGS" CPPFLAGS="-I$ROOT_BUILD/GraphicsMagick-1.3.43/include -fopenmp -I$LIBOMP_INCLUDE_PATH $TSAN_FLAGS" \
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" \
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" \
     ./configure --without-perl --prefix=$ROOT_BIN/graphicsmagick --without-png
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" make -j`nproc`
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" make -j`nproc`
     make install
 
     cd $ROOT_BIN/graphicsmagick
@@ -791,11 +817,11 @@ build_ffmpeg() {
     rm -rf $ROOT_BIN/ffmpeg
     mkdir $ROOT_BIN/ffmpeg
 
-    cc=$CC cxx=$CXX LDFLAGS="$TSAN_FLAGS" CFLAGS="-g $TSAN_FLAGS" CPPFLAGS="-g $TSAN_FLAGS" \
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu" \
+    cc=$CC cxx=$CXX LD=$CC LDFLAGS="$TSAN_FLAGS" CFLAGS="-g $TSAN_FLAGS" CPPFLAGS="-g $TSAN_FLAGS" \
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu" \
     ./configure --prefix=$ROOT_BIN/ffmpeg
 
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu" make -j`nproc`
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu" make -j`nproc`
     make install
 
     cd $ROOT_BIN/ffmpeg

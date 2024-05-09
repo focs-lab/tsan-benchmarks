@@ -143,6 +143,7 @@ build_c11_silo() {
     rm -rf $ROOT_BIN/silo
     mkdir $ROOT_BIN/silo
     cp out-perf.masstree/benchmarks/dbtest $ROOT_BIN/silo
+    cp third_party/lz4/liblz4.so $ROOT_BIN/silo
 
     popd
 }
@@ -734,9 +735,9 @@ build_graphicsmagick() {
     mkdir $ROOT_BIN/graphicsmagick
 
     CC=$CC CXX=$CXX LDFLAGS="-L$ROOT_BUILD/GraphicsMagick-1.3.43/lib -L$LIBOMP_LIB_PATH $TSAN_FLAGS" CPPFLAGS="-I$ROOT_BUILD/GraphicsMagick-1.3.43/include -fopenmp -I$LIBOMP_INCLUDE_PATH $TSAN_FLAGS" \
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" \
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" \
     ./configure --without-perl --prefix=$ROOT_BIN/graphicsmagick --without-png
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" make -j`nproc`
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu:$LLVM_BUILD_PATH/runtimes/runtimes-bins/openmp/runtime/src" make -j`nproc`
     make install
 
     cd $ROOT_BIN/graphicsmagick
@@ -792,10 +793,10 @@ build_ffmpeg() {
     mkdir $ROOT_BIN/ffmpeg
 
     cc=$CC cxx=$CXX LDFLAGS="$TSAN_FLAGS" CFLAGS="-g $TSAN_FLAGS" CPPFLAGS="-g $TSAN_FLAGS" \
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu" \
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu" \
     ./configure --prefix=$ROOT_BIN/ffmpeg
 
-    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/19/lib/x86_64-unknown-linux-gnu" make -j`nproc`
+    LD_LIBRARY_PATH="$LLVM_BUILD_PATH/lib/clang/18/lib/x86_64-unknown-linux-gnu" make -j`nproc`
     make install
 
     cd $ROOT_BIN/ffmpeg

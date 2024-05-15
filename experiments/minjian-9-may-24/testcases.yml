@@ -1,16 +1,22 @@
+llvm:
+  lib: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-lib
+  symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
+
 runtimes:
   - name: base
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
-    symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
   - name: base-sse
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
-    symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
   - name: minjian
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/minjian
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/minjian
-    symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
+
+shared_libs:     # list of folders containing shared libraries needed by some of the benchmarks
+  - /home/users/nus/dws.lim/minjian-experiments/tsan/lib
+
+bins: ../../bin
 
 tests:
   mini:
@@ -191,94 +197,110 @@ tests:
       #       cmd: ./c-ray-mt -t 128 -s 1600x1200 -r 8 -i sphfract -o output.ppm
       #       cleanup: rm output.ppm
 
-      - name: graphicsmagick
-        tests:
-          - name: graphicsmagick_gaussian_1_8_threads
-            env:
-              - name: OMP_NUM_THREADS
-                value: 8
-            cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
-            cleanup: rm output.ppm
-          - name: graphicsmagick_gaussian_1_32_threads
-            env:
-              - name: OMP_NUM_THREADS
-                value: 32
-            cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
-            cleanup: rm output.ppm
-          - name: graphicsmagick_gaussian_1_128_threads
-            env:
-              - name: OMP_NUM_THREADS
-                value: 128
-            cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
-            cleanup: rm output.ppm
-          - name: graphicsmagick_gaussian_32_8_threads
-            env:
-              - name: OMP_NUM_THREADS
-                value: 8
-            cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
-            cleanup: rm output.ppm
-          - name: graphicsmagick_gaussian_32_32_threads
-            env:
-              - name: OMP_NUM_THREADS
-                value: 32
-            cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
-            cleanup: rm output.ppm
-          - name: graphicsmagick_gaussian_32_128_threads
-            env:
-              - name: OMP_NUM_THREADS
-                value: 128
-            cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
-            cleanup: rm output.ppm
+      # - name: graphicsmagick
+      #   tests:
+      #     - name: graphicsmagick_gaussian_1_8_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 8
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_1_32_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 32
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_1_128_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 128
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_32_8_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 8
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_32_32_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 32
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_32_128_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 128
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
+      #       cleanup: rm output.ppm
 
-  big:
-    timeout: 600
+  c11:
+    timeout: 1800
     tests:
-      - name: ffmpeg
+      - name: cdschecker
         tests:
-          - name: ffmpeg_mov_to_mp4_16_threads
-            cmd: bin/ffmpeg -y -threads 16 -i tears_of_steel_720p.mov output.mp4
-            cleanup: rm output.mp4
+          - name: barrier
+            cmd: ./barrier
 
-    # - name: silo
-    #   tests:
-    #     - name: silo_dbtest
-    #       cmd: ./dbtest
+          - name: chase-lev-deque
+            cmd: ./chase-lev-deque
 
-    # - name: gdax
-    #   tests:
-    #     - name: gdax
-    #       cmd: LD_LIBRARY_PATH=./dependencies/libcds-2.3.2/build-release/bin:$LD_LIBRARY_PATH ./demo
+          - name: dekker-fences
+            cmd: ./dekker-fences
 
-    # - name: SimpleMOC
-    #   tests:
-    #     - name: SimpleMOC_small
-    #       cmd: ./SimpleMOC -s
+          - name: linuxrwlocks
+            cmd: ./linuxrwlocks
 
-  temp:
-    timeout: 15
-    tests:
+          - name: mcs-lock
+            cmd: ./mcs-lock
+
+          - name: mpmc-queue
+            cmd: ./mpmc-queue
+
+          - name: ms-queue
+            cmd: ./ms-queue
+
+          - name: spsc-queue
+            cmd: ./spsc-queue
+
+      - name: silo
+        tests:
+          - name: silo_dbtest
+            lib_paths:
+              - ./
+            cmd: ./dbtest
+
       - name: iris
         tests:
           - name: iris
             cmd: ./test2
 
-      - name: miniFE
-        tests:
-          - name: miniFE
-            cmd: ./miniFE.x
-            cleanup: rm miniFE.*.yaml
-
-      - name: silo
-        tests:
-          - name: silo_dbtest
-            cmd: ./dbtest
-
       - name: gdax
         tests:
           - name: gdax
-            cmd: LD_LIBRARY_PATH=./dependencies/libcds-2.3.2/build-release/bin:$LD_LIBRARY_PATH ./demo
+            lib_paths:
+              - ./dependencies/libcds-2.3.2/build-release/bin
+            cmd: ./demo
 
       - name: mabain
         tests:
           - name: mb_rc_test
+            lib_paths:
+              - ./install/lib
             cmd: ./mb_rc_test
+
+  temp:
+    timeout: 60
+    tests:
+      - name: AMG
+        tests:
+          - name: AMG
+            before: module unload PrgEnv-cray/8.3.3 && module unload craype-x86-rome && module load openmpi/4.1.2-hpe && module load libfabric/1.11.0.4.125
+            cmd: ./amg && module list
+      # - name: miniAMR
+      #   tests:
+      #     - name: miniAMR
+      #       before: module unload PrgEnv-cray/8.3.3 && module unload craype-x86-rome && module load openmpi/4.1.2-hpe && module load libfabric/1.11.0.4.125
+      #       cmd: ./ma.x

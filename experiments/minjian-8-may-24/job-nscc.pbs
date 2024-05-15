@@ -8,4 +8,4 @@
 
 cd /home/users/nus/dws.lim/minjian-experiments/tsan/tsan-benchmarks/runs/minjian-medium-8-may-24
 module load python/3.8.13
-python3.8 runner-perf.py medium 10
+python3.8 runner.py medium 10

@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -q normal
-#PBS -N mj
+#PBS -N uclk-smp
 #PBS -l select=1:mpiprocs=1:ncpus=64:ompthreads=64:mem=32gb
 #PBS -l walltime=24:00:00
 #PBS -j oe

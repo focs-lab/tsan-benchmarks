@@ -3,34 +3,34 @@ llvm:
   symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
 
 runtimes:
-  - name: base    # no sampling, no sse, no slots
-    iterations: 10
-    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
-    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
-  - name: uclock
-    iterations: 10
-    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
-    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
-  - name: base-sampling    # no sse, no slots
-    iterations: 50
-    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
-    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
-  - name: uclock-sampling
-    iterations: 50
-    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
-    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
-  # - name: base-sse
+  # - name: base    # no sampling, no sse, no slots
+  #   iterations: 10
+  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  # - name: uclock
+  #   iterations: 10
+  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
+  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
+  # - name: base-sampling    # no sse, no slots
+  #   iterations: 50
+  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  # - name: uclock-sampling
+  #   iterations: 50
+  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
+  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
+  # - name: base-sse          # sse, no slots
   #   iterations: 10
   #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
   #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
-  # - name: base-slots-no-sse
+  # - name: base-slots
   #   iterations: 10
-  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
-  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
-  # - name: base-slots-sse
-  #   iterations: 10
-  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
-  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
+  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+  - name: base-slots-sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
 
 shared_libs:     # list of folders containing shared libraries needed by some of the benchmarks
   - /home/users/nus/dws.lim/minjian-experiments/tsan/lib

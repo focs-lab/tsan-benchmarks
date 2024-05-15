@@ -7,5 +7,7 @@
 #PBS -P 11002670
 
 cd $PBS_O_WORKDIR
+module unload PrgEnv-cray/8.3.3 && module unload craype-x86-rome && module load openmpi/4.1.2-hpe && module load libfabric/1.11.0.4.125
 module load python/3.8.13
-python3.8 runner.py medium
+module load openmpi/4.1.2-hpe
+python3.8 runner.py temp 10

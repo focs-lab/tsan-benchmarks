@@ -6,13 +6,9 @@ import subprocess
 import sys
 import yaml
 
-import logging
-from datetime import datetime
-
 from dataclasses import dataclass
 from typing import List, Dict
 
-logger = logging.getLogger(__name__)
 
 DEBUG = False
 # BUILT_PROGRAMS_PATH = "../../bin"            # where the built programs are located (currently in ../bin)
@@ -20,7 +16,6 @@ HAS_PERF = True
 # REPORT_FILE_PATH = "report.csv"
 # TIMEOUT = 600
 
-DATETIME_STR = datetime.now().strftime("%d-%b-%Y-%H-%M-%S")
 
 @dataclass
 class Config:
@@ -308,8 +303,8 @@ def run_test(test, test_set_name, timeout, report_bugs=True):
 
         output = process.stderr.read().splitlines()
         if DEBUG:
-            logging.info(b"\n".join(output).decode())
-        logging.info(b"\n".join(output).decode())
+            print(b"\n".join(output).decode())
+        print(b"\n".join(output).decode())
 
         duration = parse_perf_stats("seconds time elapsed", output)
         context_switches = parse_perf_stats("context-switches", output)
@@ -325,9 +320,9 @@ def run_test(test, test_set_name, timeout, report_bugs=True):
 
         tsan_num_warnings = parse_extra_stats("ThreadSanitizer: reported ", output)
 
-        logging.info("Branches:", branches, branch_misses, branch_misses/branches)
-        logging.info("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
-        logging.info("LLC:", llc_loads, llc_load_misses/llc_loads)
+        print("Branches:", branches, branch_misses, branch_misses/branches)
+        print("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
+        print("LLC:", llc_loads, llc_load_misses/llc_loads)
 
         return TestStats(test_name=test_name,
                          test_cmd=test_cmd,
@@ -450,15 +445,15 @@ def output_aggregate_stats(test_agg_stats: TestAggStats):
         writer.writerow(test_agg_stats.as_row())
 
 
-def run_tests(test_num_iters: int, report_bugs=True):
+def run_tests(report_bugs=True):
     testcases_yaml = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
     testcases = testcases_yaml["tests"]
     testcases_categories = list(testcases.keys())
-    logging.info("[*] Loaded testcases from testcases.yml")
+    print("[*] Loaded testcases from testcases.yml")
 
     # choose test category (small, medium, large, etc)
     if len(testcases_categories) == 0:
-        logging.info('[!] Testcases are either empty or malformed. Please check!')
+        print('[!] Testcases are either empty or malformed. Please check!')
         sys.exit(1)
 
     if len(sys.argv) < 2:
@@ -468,19 +463,29 @@ def run_tests(test_num_iters: int, report_bugs=True):
     elif sys.argv[1].isdigit():
         category = testcases_categories[int(sys.argv[1])]
     else:
-        logging.info(f"[!] Unknown category specified: {sys.argv[1]}.")
+        print(f"[!] Unknown category specified: {sys.argv[1]}.")
         sys.exit(1)
 
+    # choose number of iterations for each test case
+    if len(sys.argv) < 3:
+        test_num_iters = 10
+    else:
+        try:
+            test_num_iters = int(sys.argv[2])
+        except ValueError:
+            print(f"[!] Invalid number of test iterations: {sys.argv[2]}")
+            sys.exit(1)
+
     timeout = int(testcases[category]["timeout"])
-    logging.info(f"[*] Running **{category}** test cases")
-    logging.info(f"[*] Running each test case {test_num_iters} times")
-    logging.info(f"[*] Timeout: {timeout}s")
+    print(f"[*] Running **{category}** test cases")
+    print(f"[*] Running each test case {test_num_iters} times")
+    print(f"[*] Timeout: {timeout}s")
     testcases = testcases[category]["tests"]
     for test_set in testcases:
         test_set_name = test_set["name"]
         tests = test_set["tests"]
 
-        logging.info(f"[**] Running tests under {test_set_name}")
+        print(f"[**] Running tests under {test_set_name}")
         for test in tests:
             tests_stats: List[TestStats] = []
             for _ in range(test_num_iters):
@@ -490,26 +495,22 @@ def run_tests(test_num_iters: int, report_bugs=True):
             test_agg_stats = aggregate_test_stats(tests_stats)
             output_aggregate_stats(test_agg_stats)
 
-def setup_logging():
-    logging.basicConfig(filename=f'experiment-{DATETIME_STR}.log', level=logging.INFO)
-
 
 def main():
-    setup_logging()
     config = load_config()
     for rt in config.runtimes:
-        logging.info(f"=== Using runtime [{rt['name']}] for benchmarks ===")
-        logging.info(f"OpenMP: {rt['openmp']}")
-        logging.info(f"libclang_rt: {rt['compiler-rt']}")
-        logging.info(f"llvm-symbolizer: {config.llvm['symbolizer']}")
+        print(f"=== Using runtime [{rt['name']}] for benchmarks ===")
+        print(f"OpenMP: {rt['openmp']}")
+        print(f"libclang_rt: {rt['compiler-rt']}")
+        print(f"llvm-symbolizer: {config.llvm['symbolizer']}")
 
         prepare_env(rt, config.llvm, config.shared_libs)
         prepare_report_file(rt["name"])
-        run_tests(rt["iterations"])
+        run_tests()
         prepare_report_file(rt["name"]+"-no-report-bugs")
         run_tests(False)
 
-        logging.info("=== Finished running benchmarks for this runtime ===")
+        print("=== Finished running benchmarks for this runtime ===")
 
 
 if __name__ == "__main__":

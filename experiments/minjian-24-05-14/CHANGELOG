@@ -1,0 +1,5 @@
+Improved runner.py
+- Specify number of iterations in yaml
+- Log all output to file
+
+tsan commit 7e7e0352fe11f0d2c8ba9742e713685ed0b4d17b

@@ -41,9 +41,11 @@ class TestAggStats:
 
     duration: float
     duration_stdev: float
+    duration_median: float
 
     num_warnings: float
     num_warnings_stdev: float
+    num_warnings_median: float
 
     context_switches: float
     context_switches_stdev: float
@@ -81,9 +83,11 @@ class TestAggStats:
 
             "duration",
             "duration_stdev",
+            "duration_median",
 
             "num_warnings",
             "num_warnings_stdev",
+            "num_warnings_median",
 
             "context_switches",
             "context_switches_stdev",
@@ -123,9 +127,11 @@ class TestAggStats:
 
                 self.duration,
                 self.duration_stdev,
+                self.duration_median,
 
                 self.num_warnings,
                 self.num_warnings_stdev,
+                self.num_warnings_median,
 
                 self.context_switches,
                 self.context_switches_stdev,
@@ -159,13 +165,14 @@ class TestAggStats:
             ]
         )
 
-def load_runtimes():
-    testcases_yaml = yaml.load(open("testcases-perf.yml"), Loader=yaml.FullLoader)
+def load_llvm_and_runtimes():
+    testcases_yaml = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
     runtimes = testcases_yaml["runtimes"]
-    return runtimes
+    llvm = testcases_yaml["llvm"]
+    return llvm, runtimes
 
 
-def prepare_env(rt: dict):
+def prepare_env(rt: dict, llvm: dict):
     # LLVM_BUILD_PATH = os.getenv("CUSTOM_LLVM_BUILD_PATH")
     # if LLVM_BUILD_PATH is None:
     #     print("[!] CUSTOM_LLVM_BUILD_PATH is not set in the environment.")
@@ -174,26 +181,32 @@ def prepare_env(rt: dict):
     #     sys.exit(1)
 
     LIBOMP_LIB_PATH = rt["openmp"]
-    if not pathlib.Path(LIBOMP_LIB_PATH).exists():
+    if not pathlib.Path(LIBOMP_LIB_PATH).joinpath("libomp.so").exists():
         print(f"[!] libomp.so is not found in the path {LIBOMP_LIB_PATH}. Please ensure that it exists before proceeding.")
         print("The following cmake command builds the TSan and OpenMP components in LLVM.")
         print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
         sys.exit(1)
 
     LIBCLANGRT_LIB_PATH = rt["compiler-rt"]
-    if not pathlib.Path(LIBCLANGRT_LIB_PATH).exists():
-        print(f"[!] libclang_r.tsan.so is not found in the path {LIBCLANGRT_LIB_PATH}. Please ensure that it exists before proceeding.")
+    if not pathlib.Path(LIBCLANGRT_LIB_PATH).joinpath("libclang_rt.tsan.so").exists():
+        print(f"[!] libclang_rt.tsan.so is not found in the path {LIBCLANGRT_LIB_PATH}. Please ensure that it exists before proceeding.")
         print("The following cmake command builds the TSan and OpenMP components in LLVM.")
         print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
         sys.exit(1)
 
+    LLVM_LIB_PATH = llvm["lib"]
+    if not pathlib.Path(LLVM_LIB_PATH).joinpath("libLLVMOption.so.18.1").exists():
+        print(f"[!] libLLVMOption.so.18.1 is not found in the path {LLVM_LIB_PATH}. llvm-symbolizer will fail with an error.")
+        sys.exit(1)
+
     ld_library_path = os.getenv("LD_LIBRARY_PATH")
-    ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}" + (":"+ld_library_path if ld_library_path is not None else "")
+    ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}:{LLVM_LIB_PATH}" + (":"+ld_library_path if ld_library_path is not None else "")
     os.environ["LD_LIBRARY_PATH"] = ld_library_path_new
 
-    SYMBOLIZER_PATH = rt["symbolizer"]
+    SYMBOLIZER_PATH = llvm["symbolizer"]
     os.environ["TSAN_SYMBOLIZER_PATH"] = SYMBOLIZER_PATH
 
+    # os.environ["TSAN_OPTIONS"] = "report_bugs=0 ignore_noninstrumented_modules=1"
     os.environ["TSAN_OPTIONS"] = "ignore_noninstrumented_modules=1"
 
 def prepare_report_file(rt_name: str):
@@ -241,7 +254,7 @@ def parse_extra_stats(prefix: str, output: str):
 
     return stat
 
-def run_test(test, test_set_name, timeout):
+def run_test(test, test_set_name, timeout, report_bugs=True):
     BASH_PATH = "/usr/bin/bash"
     # PERF_EVENTS = "{L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses},{branches,branch-misses},instructions,context-switches,migrations,page-faults"
     PERF_EVENTS = "instructions,context-switches"
@@ -254,6 +267,19 @@ def run_test(test, test_set_name, timeout):
     if "env" in test.keys():
         for e in test["env"]:
             test_env[e["name"]] = str(e["value"])
+
+    if "lib_paths" in test.keys():
+        test_lib_paths = test["lib_paths"]
+        ld_library_path = test_env["LD_LIBRARY_PATH"]
+        for path in test_lib_paths:
+            ld_library_path = f"{ld_library_path}:{path}"
+        test_env["LD_LIBRARY_PATH"] = ld_library_path
+
+    if not report_bugs:
+        if "TSAN_OPTIONS" in test_env.keys():
+            test_env["TSAN_OPTIONS"] += " report_bugs=0"
+        else:
+            test_env["TSAN_OPTIONS"] = "report_bugs=0"
 
     with subprocess.Popen(BASH_PATH, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env) as process:
         perf_prefix = f"~/perf stat -e \"{PERF_EVENTS}\" " if HAS_PERF else ""
@@ -320,9 +346,11 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
 
     duration_mean = statistics.mean(duration_list)
     duration_stdev = statistics.stdev(duration_list)
+    duration_median = statistics.median(duration_list)
 
     num_warnings_mean = statistics.mean(num_warnings_list)
     num_warnings_stdev = statistics.stdev(num_warnings_list)
+    num_warnings_median = statistics.median(num_warnings_list)
 
     context_switches_mean = statistics.mean(context_switches_list)
     context_switches_stdev = statistics.stdev(context_switches_list)
@@ -362,9 +390,11 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         tests_stats[0].test_cmd,
                         duration=duration_mean,
                         duration_stdev=duration_stdev,
+                        duration_median=duration_median,
 
                         num_warnings=num_warnings_mean,
                         num_warnings_stdev=num_warnings_stdev,
+                        num_warnings_median=num_warnings_median,
 
                         context_switches=context_switches_mean,
                         context_switches_stdev=context_switches_stdev,
@@ -403,11 +433,11 @@ def output_aggregate_stats(test_agg_stats: TestAggStats):
         writer.writerow(test_agg_stats.as_row())
 
 
-def run_tests():
-    testcases_yaml = yaml.load(open("testcases-perf.yml"), Loader=yaml.FullLoader)
+def run_tests(report_bugs=True):
+    testcases_yaml = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
     testcases = testcases_yaml["tests"]
     testcases_categories = list(testcases.keys())
-    print("[*] Loaded testcases from testcases-perf.yml")
+    print("[*] Loaded testcases from testcases.yml")
 
     # choose test category (small, medium, large, etc)
     if len(testcases_categories) == 0:
@@ -447,7 +477,7 @@ def run_tests():
         for test in tests:
             tests_stats: List[TestStats] = []
             for _ in range(test_num_iters):
-                test_stats = run_test(test, test_set_name, timeout)
+                test_stats = run_test(test, test_set_name, timeout, report_bugs)
                 tests_stats.append(test_stats)
 
             test_agg_stats = aggregate_test_stats(tests_stats)
@@ -455,16 +485,18 @@ def run_tests():
 
 
 def main():
-    runtimes = load_runtimes()
+    llvm, runtimes = load_llvm_and_runtimes()
     for rt in runtimes:
         print(f"=== Using runtime [{rt['name']}] for benchmarks ===")
         print(f"OpenMP: {rt['openmp']}")
         print(f"libclang_rt: {rt['compiler-rt']}")
-        print(f"llvm-symbolizer: {rt['symbolizer']}")
+        print(f"llvm-symbolizer: {llvm['symbolizer']}")
 
-        prepare_env(rt)
+        prepare_env(rt, llvm)
         prepare_report_file(rt["name"])
         run_tests()
+        prepare_report_file(rt["name"]+"-no-report-bugs")
+        run_tests(False)
 
         print("=== Finished running benchmarks for this runtime ===")
 

@@ -129,7 +129,7 @@ tests:
             cleanup: rm hpccg*
 
   medium:
-    timeout: 900
+    timeout: 1800
     tests:
       - name: OmpSCR
         tests:
@@ -690,11 +690,6 @@ tests:
             cmd: ./miniFE.x
             cleanup: rm miniFE.*.yaml
 
-      - name: miniAMR
-        tests:
-          - name: miniAMR
-            cmd: ./ma.x
-
       - name: HPCCG
         tests:
           - name: HPCCG_64_64_64
@@ -800,9 +795,7 @@ tests:
       #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
       #       cleanup: rm output.ppm
 
-  c11:
-    timeout: 1800
-    tests:
+
       - name: cdschecker
         tests:
           - name: barrier

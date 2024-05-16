@@ -33,6 +33,7 @@ class TestStats:
     test_name: str
     test_cmd: str
     duration: int
+    memory: int
     num_warnings: int
     context_switches: int
     migrations: int
@@ -53,10 +54,20 @@ class TestAggStats:
     duration: float
     duration_stdev: float
     duration_median: float
+    duration_min: int
+    duration_max: int
+
+    memory: float
+    memory_stdev: float
+    memory_median: float
+    memory_min: int
+    memory_max: int
 
     num_warnings: float
     num_warnings_stdev: float
     num_warnings_median: float
+    num_warnings_min: int
+    num_warnings_max: int
 
     context_switches: float
     context_switches_stdev: float
@@ -95,10 +106,20 @@ class TestAggStats:
             "duration",
             "duration_stdev",
             "duration_median",
+            "duration_min",
+            "duration_max",
+
+            "memory",
+            "memory_stdev",
+            "memory_median",
+            "memory_min",
+            "memory_max",
 
             "num_warnings",
             "num_warnings_stdev",
             "num_warnings_median",
+            "num_warnings_min",
+            "num_warnings_max",
 
             "context_switches",
             "context_switches_stdev",
@@ -139,10 +160,20 @@ class TestAggStats:
                 self.duration,
                 self.duration_stdev,
                 self.duration_median,
+                self.duration_min,
+                self.duration_max,
+
+                self.memory,
+                self.memory_stdev,
+                self.memory_median,
+                self.memory_min,
+                self.memory_max,
 
                 self.num_warnings,
                 self.num_warnings_stdev,
                 self.num_warnings_median,
+                self.num_warnings_min,
+                self.num_warnings_max,
 
                 self.context_switches,
                 self.context_switches_stdev,
@@ -189,32 +220,41 @@ def load_config():
 def prepare_env(rt: Dict, llvm: Dict, shared_libs: List[str]):
     # LLVM_BUILD_PATH = os.getenv("CUSTOM_LLVM_BUILD_PATH")
     # if LLVM_BUILD_PATH is None:
-    #     print("[!] CUSTOM_LLVM_BUILD_PATH is not set in the environment.")
-    #     print('[!] Please set $CUSTOM_LLVM_BUILD_PATH to the directory of your custom LLVM build. E.g.')
-    #     print('export CUSTOM_LLVM_BUILD_PATH=/home/daniel/llvm-project/build')
+    #     logging.error("CUSTOM_LLVM_BUILD_PATH is not set in the environment.")
+    #     logging.error('Please set $CUSTOM_LLVM_BUILD_PATH to the directory of your custom LLVM build. E.g.')
+    #     logging.error('export CUSTOM_LLVM_BUILD_PATH=/home/daniel/llvm-project/build')
     #     sys.exit(1)
 
     LIBOMP_LIB_PATH = rt["openmp"]
     if not pathlib.Path(LIBOMP_LIB_PATH).joinpath("libomp.so").exists():
-        print(f"[!] libomp.so is not found in the path {LIBOMP_LIB_PATH}. Please ensure that it exists before proceeding.")
-        print("The following cmake command builds the TSan and OpenMP components in LLVM.")
-        print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
+        logging.error(f"libomp.so is not found in the path {LIBOMP_LIB_PATH}. Please ensure that it exists before proceeding.")
+        logging.error("The following cmake command builds the TSan and OpenMP components in LLVM.")
+        logging.error('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
+        logging.error("You can find it at runtimes/runtimes-bins/openmp/runtime/src/libomp.so in your LLVM build folder.")
+        sys.exit(1)
+
+    LIBARCHER_LIB_PATH = rt["archer"]
+    if not pathlib.Path(LIBARCHER_LIB_PATH).joinpath("libarcher.so").exists():
+        logging.error(f"libarcher.so is not found in the path {LIBARCHER_LIB_PATH}. Please ensure that it exists before proceeding. Without it, there will be a massive number of false positives.")
+        logging.error("It is built together with OpenMP in LLVM. You can find it at runtimes/runtimes-bins/openmp/tools/archer/libarcher.so in your LLVM build folder.")
         sys.exit(1)
 
     LIBCLANGRT_LIB_PATH = rt["compiler-rt"]
     if not pathlib.Path(LIBCLANGRT_LIB_PATH).joinpath("libclang_rt.tsan.so").exists():
-        print(f"[!] libclang_rt.tsan.so is not found in the path {LIBCLANGRT_LIB_PATH}. Please ensure that it exists before proceeding.")
-        print("The following cmake command builds the TSan and OpenMP components in LLVM.")
-        print('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
+        logging.error(f"libclang_rt.tsan.so is not found in the path {LIBCLANGRT_LIB_PATH}. Please ensure that it exists before proceeding.")
+        logging.error("The following cmake command builds the TSan and OpenMP components in LLVM.")
+        logging.error('cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" -DBUILD_SHARED_LIBS=ON -DLLVM_BINUTILS_INCDIR=/usr/include')
         sys.exit(1)
 
     LLVM_LIB_PATH = llvm["lib"]
     if not pathlib.Path(LLVM_LIB_PATH).joinpath("libLLVMOption.so.18.1").exists():
-        print(f"[!] libLLVMOption.so.18.1 is not found in the path {LLVM_LIB_PATH}. llvm-symbolizer will fail with an error.")
+        logging.error(f"libLLVMOption.so.18.1 is not found in the path {LLVM_LIB_PATH}. llvm-symbolizer will fail with an error.")
         sys.exit(1)
 
     ld_library_path = os.getenv("LD_LIBRARY_PATH")
-    ld_library_path_new = f"{LIBCLANGRT_LIB_PATH}:{LIBOMP_LIB_PATH}:{LLVM_LIB_PATH}:{':'.join(shared_libs)}" + (":"+ld_library_path if ld_library_path is not None else "")
+    all_libs = {LIBCLANGRT_LIB_PATH, LIBOMP_LIB_PATH, LLVM_LIB_PATH}
+    all_libs.update(shared_libs)
+    ld_library_path_new = f"{':'.join(all_libs)}" + (":"+ld_library_path if ld_library_path is not None else "")
     os.environ["LD_LIBRARY_PATH"] = ld_library_path_new
 
     SYMBOLIZER_PATH = llvm["symbolizer"]
@@ -230,6 +270,28 @@ def prepare_report_file(rt_name: str):
     with open(REPORT_FILE_PATH, "w") as f:
         writer = csv.writer(f)
         writer.writerow(TestAggStats.header())
+
+def parse_time_stats(keyword: str, output: str):
+    start = len(output) - 1
+    while start >= 0:
+        if keyword in output[start].decode():
+            break
+        start -= 1
+
+    if start >= 0:
+        line: str = output[start].decode()
+        num = line.split(": ")[1].replace(",", "")
+        if "wall clock" in line:
+            # m:ss, e.g. 1:10.05
+            mins = int(num.split(":")[0])
+            secs = float(num.split(":")[1])
+            stat = int((mins * 60 + secs) * 1000)
+        else:
+            stat = int(num)
+    else:
+        stat = 0
+
+    return stat
 
 def parse_perf_stats(keyword: str, output: str):
     if not HAS_PERF:
@@ -298,11 +360,12 @@ def run_test(test, test_set_name, timeout, report_bugs=True):
             test_env["TSAN_OPTIONS"] = "report_bugs=0"
 
     with subprocess.Popen(BASH_PATH, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env) as process:
+        time_prefix = "command time -v "
         perf_prefix = f"~/perf stat -e \"{PERF_EVENTS}\" " if HAS_PERF else ""
 
         process.stdin.write(f"cd {BINS_PATH}/{test_set_name}\n".encode())
         process.stdin.write(f"{test_cmd_before}\n".encode())
-        process.stdin.write(f"{perf_prefix}timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
+        process.stdin.write(f"{perf_prefix}{time_prefix}timeout --signal=SIGINT {timeout} {test_cmd}\n{test_cleanup}\nexit\n".encode())
         process.stdin.write(b"exit\n")
         process.stdin.close()
 
@@ -311,7 +374,9 @@ def run_test(test, test_set_name, timeout, report_bugs=True):
             logging.info(b"\n".join(output).decode())
         logging.info(b"\n".join(output).decode())
 
-        duration = parse_perf_stats("seconds time elapsed", output)
+        duration = parse_time_stats("Elapsed (wall clock) time", output)
+        memory = parse_time_stats("Maximum resident set size", output)
+
         context_switches = parse_perf_stats("context-switches", output)
         migrations = parse_perf_stats("migrations", output)
         page_faults = parse_perf_stats("page-faults", output)
@@ -325,13 +390,14 @@ def run_test(test, test_set_name, timeout, report_bugs=True):
 
         tsan_num_warnings = parse_extra_stats("ThreadSanitizer: reported ", output)
 
-        logging.info("Branches:", branches, branch_misses, branch_misses/branches)
-        logging.info("L1:", l1_loads, l1_load_misses, l1_load_misses/l1_loads)
-        logging.info("LLC:", llc_loads, llc_load_misses/llc_loads)
+        logging.info(f"Branches: {(branches, branch_misses, branch_misses/branches)}")
+        logging.info(f"L1: {(l1_loads, l1_load_misses, l1_load_misses/l1_loads)}")
+        logging.info(f"LLC: {(llc_loads, llc_load_misses/llc_loads)}")
 
         return TestStats(test_name=test_name,
                          test_cmd=test_cmd,
                          duration=duration,
+                         memory=memory,
                          num_warnings=tsan_num_warnings,
                          context_switches=context_switches,
                          migrations=migrations,
@@ -347,6 +413,7 @@ def run_test(test, test_set_name, timeout, report_bugs=True):
 # aggregates the stats after running a test case N times
 def aggregate_test_stats(tests_stats: List[TestStats]):
     duration_list = list(map(lambda ts: ts.duration, tests_stats))
+    memory_list = list(map(lambda ts: ts.memory, tests_stats))
     num_warnings_list = list(map(lambda ts: ts.num_warnings, tests_stats))
 
     context_switches_list = list(map(lambda ts: ts.context_switches, tests_stats))
@@ -364,10 +431,20 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
     duration_mean = statistics.mean(duration_list)
     duration_stdev = statistics.stdev(duration_list)
     duration_median = statistics.median(duration_list)
+    duration_min = min(duration_list)
+    duration_max = max(duration_list)
+
+    memory_mean = statistics.mean(memory_list)
+    memory_stdev = statistics.stdev(memory_list)
+    memory_median = statistics.median(memory_list)
+    memory_min = min(memory_list)
+    memory_max = max(memory_list)
 
     num_warnings_mean = statistics.mean(num_warnings_list)
     num_warnings_stdev = statistics.stdev(num_warnings_list)
     num_warnings_median = statistics.median(num_warnings_list)
+    num_warnings_min = min(num_warnings_list)
+    num_warnings_max = max(num_warnings_list)
 
     context_switches_mean = statistics.mean(context_switches_list)
     context_switches_stdev = statistics.stdev(context_switches_list)
@@ -408,10 +485,20 @@ def aggregate_test_stats(tests_stats: List[TestStats]):
                         duration=duration_mean,
                         duration_stdev=duration_stdev,
                         duration_median=duration_median,
+                        duration_min=duration_min,
+                        duration_max=duration_max,
+
+                        memory=memory_mean,
+                        memory_stdev=memory_stdev,
+                        memory_median=memory_median,
+                        memory_min=memory_min,
+                        memory_max=memory_max,
 
                         num_warnings=num_warnings_mean,
                         num_warnings_stdev=num_warnings_stdev,
                         num_warnings_median=num_warnings_median,
+                        num_warnings_min=num_warnings_min,
+                        num_warnings_max=num_warnings_max,
 
                         context_switches=context_switches_mean,
                         context_switches_stdev=context_switches_stdev,
@@ -454,27 +541,25 @@ def run_tests(test_num_iters: int, report_bugs=True):
     testcases_yaml = yaml.load(open("testcases.yml"), Loader=yaml.FullLoader)
     testcases = testcases_yaml["tests"]
     testcases_categories = list(testcases.keys())
-    logging.info("[*] Loaded testcases from testcases.yml")
+    logging.info("Loaded testcases from testcases.yml")
 
     # choose test category (small, medium, large, etc)
     if len(testcases_categories) == 0:
-        logging.info('[!] Testcases are either empty or malformed. Please check!')
+        logging.error('Testcases are either empty or malformed. Please check!')
         sys.exit(1)
 
-    if len(sys.argv) < 2:
-        category = testcases_categories[0]
-    elif sys.argv[1] in testcases_categories:
+    if sys.argv[1] in testcases_categories:
         category = sys.argv[1]
     elif sys.argv[1].isdigit():
         category = testcases_categories[int(sys.argv[1])]
     else:
-        logging.info(f"[!] Unknown category specified: {sys.argv[1]}.")
+        logging.error(f"Unknown category specified: {sys.argv[1]}.")
         sys.exit(1)
 
     timeout = int(testcases[category]["timeout"])
-    logging.info(f"[*] Running **{category}** test cases")
-    logging.info(f"[*] Running each test case {test_num_iters} times")
-    logging.info(f"[*] Timeout: {timeout}s")
+    logging.info(f"Running **{category}** test cases")
+    logging.info(f"Running each test case {test_num_iters} times")
+    logging.info(f"Timeout: {timeout}s")
     testcases = testcases[category]["tests"]
     for test_set in testcases:
         test_set_name = test_set["name"]
@@ -487,17 +572,36 @@ def run_tests(test_num_iters: int, report_bugs=True):
                 test_stats = run_test(test, test_set_name, timeout, report_bugs)
                 tests_stats.append(test_stats)
 
+                # if timed out then lets not run it again, there's no point
+                # duration statistic is in milliseconds
+                if test_stats.duration >= timeout * 1000:
+                    # small hack: duplicate this so that the list has at least 2 data points
+                    # otherwise statistics.stdev will error
+                    tests_stats.append(test_stats)
+                    break
+
             test_agg_stats = aggregate_test_stats(tests_stats)
             output_aggregate_stats(test_agg_stats)
 
-def setup_logging():
-    logging.basicConfig(filename=f'experiment-{DATETIME_STR}.log', level=logging.INFO)
+def setup_logging(name: str):
+    log_folder = "~/scratch/tsan-outputs"
+    if not os.path.exists(log_folder):
+        log_folder = "/tmp"
+    logging.basicConfig(filename=f'{log_folder}/exp-{DATETIME_STR}-{name}.log', level=logging.INFO)
 
 
 def main():
-    setup_logging()
+    if len(sys.argv) < 3:
+        logging.error(f"Usage: python3 {sys.argv[0]} <category> <runtime>")
+        sys.exit(1)
+
     config = load_config()
+
     for rt in config.runtimes:
+        if rt["name"] != sys.argv[2]:
+            continue
+
+        setup_logging(rt["name"])
         logging.info(f"=== Using runtime [{rt['name']}] for benchmarks ===")
         logging.info(f"OpenMP: {rt['openmp']}")
         logging.info(f"libclang_rt: {rt['compiler-rt']}")

@@ -2,40 +2,72 @@ llvm:
   lib: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-lib
   symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
 
+  # # for local testing
+  # lib: /home/daniel/llvm-base/llvm-project/build/lib/
+  # symbolizer: /home/daniel/llvm-base/llvm-project/build/bin/llvm-symbolizer
+
 runtimes:
+  # base tsan - no sse, no slots
   - name: base    # no sampling, no sse, no slots
     iterations: 10
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  - name: base-sampling    # no sse, no slots
+    iterations: 50
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sampling
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sampling
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sampling
+
+  # uclock - no sse, no slots
   - name: uclock
     iterations: 10
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
-  - name: base-sampling    # no sse, no slots
-    iterations: 50
-    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
-    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
   - name: uclock-sampling
     iterations: 50
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
-  # - name: base-sse
-  #   iterations: 10
-  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
-  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
-  # - name: base-slots-no-sse
-  #   iterations: 10
-  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
-  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
-  # - name: base-slots-sse
-  #   iterations: 10
-  #   openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
-  #   compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-relacq
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
+
+  # base tsan - sse, no slots
+  - name: base-sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+  - name: base-sse-sampling    # sse, no slots
+    iterations: 50
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse-sampling
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse-sampling
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse-sampling
+
+  # base tsan, with slots
+  - name: base-slots  # no sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+  - name: base-slots-sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+
+  # for local testing
+  - name: local
+    iterations: 10
+    openmp: /home/daniel/llvm-project/build/runtimes/runtimes-bins/openmp/runtime/src
+    compiler-rt: /home/daniel/llvm-base/llvm-project/build/lib/clang/18/lib/x86_64-unknown-linux-gnu
+    archer: /home/daniel/llvm-project/build/runtimes/runtimes-bins/openmp/tools/archer
+
 
 shared_libs:     # list of folders containing shared libraries needed by some of the benchmarks
   - /home/users/nus/dws.lim/minjian-experiments/tsan/lib
 
 bins: ../../bin
+# bins: ../bin    # for local testing
 
 tests:
   mini:

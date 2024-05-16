@@ -1,0 +1,3 @@
+Run each setup (runtime) separately because otherwise it takes too long.
+Detect timeout and dont run the test case anymore.
+Report memory usage.

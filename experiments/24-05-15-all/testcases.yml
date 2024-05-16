@@ -1,0 +1,862 @@
+llvm:
+  lib: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-lib
+  symbolizer: /home/users/nus/dws.lim/minjian-experiments/tsan/llvm-symbolizer
+
+  # # for local testing
+  # lib: /home/daniel/llvm-base/llvm-project/build/lib/
+  # symbolizer: /home/daniel/llvm-base/llvm-project/build/bin/llvm-symbolizer
+
+runtimes:
+  # base tsan - no sse, no slots
+  - name: base    # no sampling, no sse, no slots
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base
+  - name: base-sampling    # no sse, no slots
+    iterations: 50
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sampling
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sampling
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sampling
+
+  # uclock - no sse, no slots
+  - name: uclock
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock
+  - name: uclock-sampling
+    iterations: 50
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-sampling
+
+  # base tsan - sse, no slots
+  - name: base-sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse
+  - name: base-sse-sampling    # sse, no slots
+    iterations: 50
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse-sampling
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse-sampling
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-sse-sampling
+
+  # base tsan, with slots
+  - name: base-slots  # no sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots
+  - name: base-slots-sse
+    iterations: 10
+    openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+    compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+    archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/base-slots-sse
+
+  # for local testing
+  - name: local
+    iterations: 10
+    openmp: /home/daniel/llvm-project/build/runtimes/runtimes-bins/openmp/runtime/src
+    compiler-rt: /home/daniel/llvm-base/llvm-project/build/lib/clang/18/lib/x86_64-unknown-linux-gnu
+    archer: /home/daniel/llvm-project/build/runtimes/runtimes-bins/openmp/tools/archer
+
+
+shared_libs:     # list of folders containing shared libraries needed by some of the benchmarks
+  - /home/users/nus/dws.lim/minjian-experiments/tsan/lib
+
+bins: ../../bin
+# bins: ../bin    # for local testing
+
+tests:
+  mini:
+    timeout: 180
+    tests:
+      - name: OmpSCR
+        tests:
+          - name: OmpSCR-fft
+            cmd: ./c_fft.par 8
+          - name: OmpSCR-fft6
+            cmd: ./c_fft6.par 256 256
+
+      - name: DRB
+        tests:
+          - name: DRB122
+            cmd: ./DRB122-taskundeferred-orig-no.c.tsan-clang.out
+          - name: DRB123
+            cmd: ./DRB123-taskundeferred-orig-yes.c.tsan-clang.out
+          - name: DRB150
+            cmd: ./DRB150-missinglock1-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB152
+            cmd: ./DRB152-missinglock2-orig-gpu-no.c.tsan-clang.out
+          - name: DRB154
+            cmd: ./DRB154-missinglock3-orig-gpu-no.c.tsan-clang.out
+          - name: DRB155
+            cmd: ./DRB155-missingordered-orig-gpu-no.c.tsan-clang.out
+          - name: DRB177
+            cmd: ./DRB177-fib-taskdep-yes.c.tsan-clang.out
+
+      - name: DRACC
+        tests:
+          - name: DRACC_OMP_017
+            cmd: ./DRACC_OMP_017_Counter_wrong_lock_Inter_yes.exe
+          - name: DRACC_OMP_018
+            cmd: ./DRACC_OMP_018_Counter_wrong_lock_simd_yes.exe
+          - name: DRACC_OMP_019
+            cmd: ./DRACC_OMP_019_Counter_wrong_lock_simd_Intra_yes.exe
+          - name: DRACC_OMP_020
+            cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
+
+      - name: miniFE
+        tests:
+          - name: miniFE
+            cmd: ./miniFE.x
+            cleanup: rm miniFE.*.yaml
+
+      - name: HPCCG
+        tests:
+          - name: HPCCG_64_64_64
+            cmd: ./test_HPCCG 64 64 64
+            cleanup: rm hpccg*
+
+  medium:
+    timeout: 900
+    tests:
+      - name: OmpSCR
+        tests:
+        - name: OmpSCR-fft
+          cmd: ./c_fft.par 8
+        - name: OmpSCR-fft6
+          cmd: ./c_fft6.par 256 256
+
+      - name: DRB
+        tests:
+          - name: DRB001
+            cmd: ./DRB001-antidep1-orig-yes.c.tsan-clang.out
+          - name: DRB002
+            cmd: ./DRB002-antidep1-var-yes.c.tsan-clang.out
+          - name: DRB003
+            cmd: ./DRB003-antidep2-orig-yes.c.tsan-clang.out
+          - name: DRB004
+            cmd: ./DRB004-antidep2-var-yes.c.tsan-clang.out
+          - name: DRB005
+            cmd: ./DRB005-indirectaccess1-orig-yes.c.tsan-clang.out
+          - name: DRB006
+            cmd: ./DRB006-indirectaccess2-orig-yes.c.tsan-clang.out
+          - name: DRB007
+            cmd: ./DRB007-indirectaccess3-orig-yes.c.tsan-clang.out
+          - name: DRB008
+            cmd: ./DRB008-indirectaccess4-orig-yes.c.tsan-clang.out
+          - name: DRB009
+            cmd: ./DRB009-lastprivatemissing-orig-yes.c.tsan-clang.out
+          - name: DRB010
+            cmd: ./DRB010-lastprivatemissing-var-yes.c.tsan-clang.out
+          - name: DRB011
+            cmd: ./DRB011-minusminus-orig-yes.c.tsan-clang.out
+          - name: DRB012
+            cmd: ./DRB012-minusminus-var-yes.c.tsan-clang.out
+          - name: DRB013
+            cmd: ./DRB013-nowait-orig-yes.c.tsan-clang.out
+          - name: DRB014
+            cmd: ./DRB014-outofbounds-orig-yes.c.tsan-clang.out
+          - name: DRB015
+            cmd: ./DRB015-outofbounds-var-yes.c.tsan-clang.out
+          - name: DRB016
+            cmd: ./DRB016-outputdep-orig-yes.c.tsan-clang.out
+          - name: DRB017
+            cmd: ./DRB017-outputdep-var-yes.c.tsan-clang.out
+          - name: DRB018
+            cmd: ./DRB018-plusplus-orig-yes.c.tsan-clang.out
+          - name: DRB019
+            cmd: ./DRB019-plusplus-var-yes.c.tsan-clang.out
+          - name: DRB020
+            cmd: ./DRB020-privatemissing-var-yes.c.tsan-clang.out
+          - name: DRB021
+            cmd: ./DRB021-reductionmissing-orig-yes.c.tsan-clang.out
+          - name: DRB022
+            cmd: ./DRB022-reductionmissing-var-yes.c.tsan-clang.out
+          - name: DRB023
+            cmd: ./DRB023-sections1-orig-yes.c.tsan-clang.out
+          - name: DRB024
+            cmd: ./DRB024-simdtruedep-orig-yes.c.tsan-clang.out
+          - name: DRB025
+            cmd: ./DRB025-simdtruedep-var-yes.c.tsan-clang.out
+          - name: DRB026
+            cmd: ./DRB026-targetparallelfor-orig-yes.c.tsan-clang.out
+          - name: DRB027
+            cmd: ./DRB027-taskdependmissing-orig-yes.c.tsan-clang.out
+          - name: DRB028
+            cmd: ./DRB028-privatemissing-orig-yes.c.tsan-clang.out
+          - name: DRB029
+            cmd: ./DRB029-truedep1-orig-yes.c.tsan-clang.out
+          - name: DRB030
+            cmd: ./DRB030-truedep1-var-yes.c.tsan-clang.out
+          - name: DRB031
+            cmd: ./DRB031-truedepfirstdimension-orig-yes.c.tsan-clang.out
+          - name: DRB032
+            cmd: ./DRB032-truedepfirstdimension-var-yes.c.tsan-clang.out
+          - name: DRB033
+            cmd: ./DRB033-truedeplinear-orig-yes.c.tsan-clang.out
+          - name: DRB034
+            cmd: ./DRB034-truedeplinear-var-yes.c.tsan-clang.out
+          - name: DRB035
+            cmd: ./DRB035-truedepscalar-orig-yes.c.tsan-clang.out
+          - name: DRB036
+            cmd: ./DRB036-truedepscalar-var-yes.c.tsan-clang.out
+          - name: DRB037
+            cmd: ./DRB037-truedepseconddimension-orig-yes.c.tsan-clang.out
+          - name: DRB038
+            cmd: ./DRB038-truedepseconddimension-var-yes.c.tsan-clang.out
+          - name: DRB039
+            cmd: ./DRB039-truedepsingleelement-orig-yes.c.tsan-clang.out
+          - name: DRB040
+            cmd: ./DRB040-truedepsingleelement-var-yes.c.tsan-clang.out
+          - name: DRB041
+            cmd: ./DRB041-3mm-parallel-no.c.tsan-clang.out
+          - name: DRB042
+            cmd: ./DRB042-3mm-tile-no.c.tsan-clang.out
+          - name: DRB043
+            cmd: ./DRB043-adi-parallel-no.c.tsan-clang.out
+          - name: DRB044
+            cmd: ./DRB044-adi-tile-no.c.tsan-clang.out
+          - name: DRB045
+            cmd: ./DRB045-doall1-orig-no.c.tsan-clang.out
+          - name: DRB046
+            cmd: ./DRB046-doall2-orig-no.c.tsan-clang.out
+          - name: DRB047
+            cmd: ./DRB047-doallchar-orig-no.c.tsan-clang.out
+          - name: DRB048
+            cmd: ./DRB048-firstprivate-orig-no.c.tsan-clang.out
+          - name: DRB049
+            cmd: ./DRB049-fprintf-orig-no.c.tsan-clang.out
+          - name: DRB050
+            cmd: ./DRB050-functionparameter-orig-no.c.tsan-clang.out
+          - name: DRB051
+            cmd: ./DRB051-getthreadnum-orig-no.c.tsan-clang.out
+          - name: DRB052
+            cmd: ./DRB052-indirectaccesssharebase-orig-no.c.tsan-clang.out
+          - name: DRB053
+            cmd: ./DRB053-inneronly1-orig-no.c.tsan-clang.out
+          - name: DRB054
+            cmd: ./DRB054-inneronly2-orig-no.c.tsan-clang.out
+          - name: DRB055
+            cmd: ./DRB055-jacobi2d-parallel-no.c.tsan-clang.out
+          - name: DRB056
+            cmd: ./DRB056-jacobi2d-tile-no.c.tsan-clang.out
+          - name: DRB057
+            cmd: ./DRB057-jacobiinitialize-orig-no.c.tsan-clang.out
+          - name: DRB058
+            cmd: ./DRB058-jacobikernel-orig-no.c.tsan-clang.out
+          - name: DRB059
+            cmd: ./DRB059-lastprivate-orig-no.c.tsan-clang.out
+          - name: DRB060
+            cmd: ./DRB060-matrixmultiply-orig-no.c.tsan-clang.out
+          - name: DRB061
+            cmd: ./DRB061-matrixvector1-orig-no.c.tsan-clang.out
+          - name: DRB062
+            cmd: ./DRB062-matrixvector2-orig-no.c.tsan-clang.out
+          - name: DRB063
+            cmd: ./DRB063-outeronly1-orig-no.c.tsan-clang.out
+          - name: DRB064
+            cmd: ./DRB064-outeronly2-orig-no.c.tsan-clang.out
+          - name: DRB065
+            cmd: ./DRB065-pireduction-orig-no.c.tsan-clang.out
+          - name: DRB066
+            cmd: ./DRB066-pointernoaliasing-orig-no.c.tsan-clang.out
+          - name: DRB067
+            cmd: ./DRB067-restrictpointer1-orig-no.c.tsan-clang.out
+          - name: DRB068
+            cmd: ./DRB068-restrictpointer2-orig-no.c.tsan-clang.out
+          - name: DRB069
+            cmd: ./DRB069-sectionslock1-orig-no.c.tsan-clang.out
+          - name: DRB070
+            cmd: ./DRB070-simd1-orig-no.c.tsan-clang.out
+          - name: DRB071
+            cmd: ./DRB071-targetparallelfor-orig-no.c.tsan-clang.out
+          - name: DRB072
+            cmd: ./DRB072-taskdep1-orig-no.c.tsan-clang.out
+          - name: DRB073
+            cmd: ./DRB073-doall2-orig-yes.c.tsan-clang.out
+          - name: DRB074
+            cmd: ./DRB074-flush-orig-yes.c.tsan-clang.out
+          - name: DRB075
+            cmd: ./DRB075-getthreadnum-orig-yes.c.tsan-clang.out
+          - name: DRB076
+            cmd: ./DRB076-flush-orig-no.c.tsan-clang.out
+          - name: DRB077
+            cmd: ./DRB077-single-orig-no.c.tsan-clang.out
+          - name: DRB078
+            cmd: ./DRB078-taskdep2-orig-no.c.tsan-clang.out
+          - name: DRB079
+            cmd: ./DRB079-taskdep3-orig-no.c.tsan-clang.out
+          - name: DRB080
+            cmd: ./DRB080-func-arg-orig-yes.c.tsan-clang.out
+          - name: DRB081
+            cmd: ./DRB081-func-arg-orig-no.c.tsan-clang.out
+          - name: DRB082
+            cmd: ./DRB082-declared-in-func-orig-yes.c.tsan-clang.out
+          - name: DRB083
+            cmd: ./DRB083-declared-in-func-orig-no.c.tsan-clang.out
+          - name: DRB084
+            cmd: ./DRB084-threadprivatemissing-orig-yes.c.tsan-clang.out
+          - name: DRB085
+            cmd: ./DRB085-threadprivate-orig-no.c.tsan-clang.out
+          - name: DRB086
+            cmd: ./DRB086-static-data-member-orig-yes.cpp.tsan-clang.out
+          - name: DRB087
+            cmd: ./DRB087-static-data-member2-orig-yes.cpp.tsan-clang.out
+          - name: DRB088
+            cmd: ./DRB088-dynamic-storage-orig-yes.c.tsan-clang.out
+          - name: DRB089
+            cmd: ./DRB089-dynamic-storage2-orig-yes.c.tsan-clang.out
+          - name: DRB090
+            cmd: ./DRB090-static-local-orig-yes.c.tsan-clang.out
+          - name: DRB091
+            cmd: ./DRB091-threadprivate2-orig-no.c.tsan-clang.out
+          - name: DRB092
+            cmd: ./DRB092-threadprivatemissing2-orig-yes.c.tsan-clang.out
+          - name: DRB093
+            cmd: ./DRB093-doall2-collapse-orig-no.c.tsan-clang.out
+          - name: DRB094
+            cmd: ./DRB094-doall2-ordered-orig-no.c.tsan-clang.out
+          - name: DRB095
+            cmd: ./DRB095-doall2-taskloop-orig-yes.c.tsan-clang.out
+          - name: DRB096
+            cmd: ./DRB096-doall2-taskloop-collapse-orig-no.c.tsan-clang.out
+          - name: DRB097
+            cmd: ./DRB097-target-teams-distribute-orig-no.c.tsan-clang.out
+          - name: DRB098
+            cmd: ./DRB098-simd2-orig-no.c.tsan-clang.out
+          - name: DRB099
+            cmd: ./DRB099-targetparallelfor2-orig-no.c.tsan-clang.out
+          - name: DRB100
+            cmd: ./DRB100-task-reference-orig-no.cpp.tsan-clang.out
+          - name: DRB101
+            cmd: ./DRB101-task-value-orig-no.cpp.tsan-clang.out
+          - name: DRB102
+            cmd: ./DRB102-copyprivate-orig-no.c.tsan-clang.out
+          - name: DRB103
+            cmd: ./DRB103-master-orig-no.c.tsan-clang.out
+          - name: DRB104
+            cmd: ./DRB104-nowait-barrier-orig-no.c.tsan-clang.out
+          - name: DRB105
+            cmd: ./DRB105-taskwait-orig-no.c.tsan-clang.out
+          - name: DRB106
+            cmd: ./DRB106-taskwaitmissing-orig-yes.c.tsan-clang.out
+          - name: DRB107
+            cmd: ./DRB107-taskgroup-orig-no.c.tsan-clang.out
+          - name: DRB108
+            cmd: ./DRB108-atomic-orig-no.c.tsan-clang.out
+          - name: DRB109
+            cmd: ./DRB109-orderedmissing-orig-yes.c.tsan-clang.out
+          - name: DRB110
+            cmd: ./DRB110-ordered-orig-no.c.tsan-clang.out
+          - name: DRB111
+            cmd: ./DRB111-linearmissing-orig-yes.c.tsan-clang.out
+          - name: DRB112
+            cmd: ./DRB112-linear-orig-no.c.tsan-clang.out
+          - name: DRB113
+            cmd: ./DRB113-default-orig-no.c.tsan-clang.out
+          - name: DRB114
+            cmd: ./DRB114-if-orig-yes.c.tsan-clang.out
+          - name: DRB115
+            cmd: ./DRB115-forsimd-orig-yes.c.tsan-clang.out
+          - name: DRB116
+            cmd: ./DRB116-target-teams-orig-yes.c.tsan-clang.out
+          - name: DRB117
+            cmd: ./DRB117-taskwait-waitonlychild-orig-yes.c.tsan-clang.out
+          - name: DRB118
+            cmd: ./DRB118-nestlock-orig-no.c.tsan-clang.out
+          - name: DRB119
+            cmd: ./DRB119-nestlock-orig-yes.c.tsan-clang.out
+          - name: DRB120
+            cmd: ./DRB120-barrier-orig-no.c.tsan-clang.out
+          - name: DRB121
+            cmd: ./DRB121-reduction-orig-no.c.tsan-clang.out
+          - name: DRB122
+            cmd: ./DRB122-taskundeferred-orig-no.c.tsan-clang.out
+          - name: DRB123
+            cmd: ./DRB123-taskundeferred-orig-yes.c.tsan-clang.out
+          - name: DRB124
+            cmd: ./DRB124-master-orig-yes.c.tsan-clang.out
+          - name: DRB125
+            cmd: ./DRB125-single-orig-no.c.tsan-clang.out
+          - name: DRB126
+            cmd: ./DRB126-firstprivatesections-orig-no.c.tsan-clang.out
+          - name: DRB127
+            cmd: ./DRB127-tasking-threadprivate1-orig-no.c.tsan-clang.out
+          - name: DRB128
+            cmd: ./DRB128-tasking-threadprivate2-orig-no.c.tsan-clang.out
+          - name: DRB129
+            cmd: ./DRB129-mergeable-taskwait-orig-yes.c.tsan-clang.out
+          - name: DRB130
+            cmd: ./DRB130-mergeable-taskwait-orig-no.c.tsan-clang.out
+          - name: DRB131
+            cmd: ./DRB131-taskdep4-orig-omp45-yes.c.tsan-clang.out
+          - name: DRB132
+            cmd: ./DRB132-taskdep4-orig-omp45-no.c.tsan-clang.out
+          - name: DRB133
+            cmd: ./DRB133-taskdep5-orig-omp45-no.c.tsan-clang.out
+          - name: DRB134
+            cmd: ./DRB134-taskdep5-orig-omp45-yes.c.tsan-clang.out
+          - name: DRB135
+            cmd: ./DRB135-taskdep-mutexinoutset-orig-no.c.tsan-clang.out
+          - name: DRB136
+            cmd: ./DRB136-taskdep-mutexinoutset-orig-yes.c.tsan-clang.out
+          - name: DRB137
+            cmd: ./DRB137-simdsafelen-orig-no.c.tsan-clang.out
+          - name: DRB138
+            cmd: ./DRB138-simdsafelen-orig-yes.c.tsan-clang.out
+          - name: DRB139
+            cmd: ./DRB139-worksharingcritical-orig-no.c.tsan-clang.out
+          - name: DRB140
+            cmd: ./DRB140-reduction-barrier-orig-yes.c.tsan-clang.out
+          - name: DRB141
+            cmd: ./DRB141-reduction-barrier-orig-no.c.tsan-clang.out
+          - name: DRB142
+            cmd: ./DRB142-acquirerelease-orig-yes.c.tsan-clang.out
+          - name: DRB143
+            cmd: ./DRB143-acquirerelease-orig-no.c.tsan-clang.out
+          - name: DRB144
+            cmd: ./DRB144-critical-missingreduction-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB145
+            cmd: ./DRB145-atomiccritical-orig-gpu-no.c.tsan-clang.out
+          - name: DRB146
+            cmd: ./DRB146-atomicupdate-orig-gpu-no.c.tsan-clang.out
+          - name: DRB147
+            cmd: ./DRB147-critical1-orig-gpu-no.c.tsan-clang.out
+          - name: DRB148
+            cmd: ./DRB148-critical1-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB149
+            cmd: ./DRB149-missingdata1-orig-gpu-no.c.tsan-clang.out
+          - name: DRB150
+            cmd: ./DRB150-missinglock1-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB151
+            cmd: ./DRB151-missinglock3-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB152
+            cmd: ./DRB152-missinglock2-orig-gpu-no.c.tsan-clang.out
+          - name: DRB153
+            cmd: ./DRB153-missinglock2-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB154
+            cmd: ./DRB154-missinglock3-orig-gpu-no.c.tsan-clang.out
+          - name: DRB155
+            cmd: ./DRB155-missingordered-orig-gpu-no.c.tsan-clang.out
+          - name: DRB156
+            cmd: ./DRB156-missingordered-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB157
+            cmd: ./DRB157-missingorderedsimd-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB158
+            cmd: ./DRB158-missingtaskbarrier-orig-gpu-no.c.tsan-clang.out
+          - name: DRB159
+            cmd: ./DRB159-nobarrier-orig-gpu-no.c.tsan-clang.out
+          - name: DRB160
+            cmd: ./DRB160-nobarrier-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB161
+            cmd: ./DRB161-nolocksimd-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB162
+            cmd: ./DRB162-nolocksimd-orig-gpu-no.c.tsan-clang.out
+          - name: DRB163
+            cmd: ./DRB163-simdmissinglock1-orig-gpu-no.c.tsan-clang.out
+          - name: DRB164
+            cmd: ./DRB164-simdmissinglock1-orig-gpu-yes.c.tsan-clang.out
+          - name: DRB165
+            cmd: ./DRB165-taskdep4-orig-omp50-yes.c.tsan-clang.out
+          - name: DRB166
+            cmd: ./DRB166-taskdep4-orig-omp50-no.c.tsan-clang.out
+          - name: DRB167
+            cmd: ./DRB167-taskdep4-orig-omp50-no.c.tsan-clang.out
+          - name: DRB168
+            cmd: ./DRB168-taskdep5-orig-omp50-yes.c.tsan-clang.out
+          - name: DRB169
+            cmd: ./DRB169-missingsyncwrite-orig-yes.c.tsan-clang.out
+          - name: DRB170
+            cmd: ./DRB170-nestedloops-orig-no.c.tsan-clang.out
+          - name: DRB171
+            cmd: ./DRB171-threadprivate3-orig-no.c.tsan-clang.out
+          - name: DRB172
+            cmd: ./DRB172-critical2-orig-no.c.tsan-clang.out
+          - name: DRB173
+            cmd: ./DRB173-non-sibling-taskdep-yes.c.tsan-clang.out
+          - name: DRB174
+            cmd: ./DRB174-non-sibling-taskdep-no.c.tsan-clang.out
+          - name: DRB175
+            cmd: ./DRB175-non-sibling-taskdep2-yes.c.tsan-clang.out
+          - name: DRB176
+            cmd: ./DRB176-fib-taskdep-no.c.tsan-clang.out
+          - name: DRB177
+            cmd: ./DRB177-fib-taskdep-yes.c.tsan-clang.out
+          - name: DRB178
+            cmd: ./DRB178-input-dependence-var-yes.c.tsan-clang.out
+          - name: DRB179
+            cmd: ./DRB179-thread-sensitivity-yes.c.tsan-clang.out
+          - name: DRB180
+            cmd: ./DRB180-miniAMR-yes.c.tsan-clang.out
+          - name: DRB181
+            cmd: ./DRB181-SmithWaterman-yes.c.tsan-clang.out
+          - name: DRB182
+            cmd: ./DRB182-atomic3-no.c.tsan-clang.out
+          - name: DRB183
+            cmd: ./DRB183-atomic3-yes.c.tsan-clang.out
+          - name: DRB184
+            cmd: ./DRB184-barrier1-no.c.tsan-clang.out
+          - name: DRB185
+            cmd: ./DRB185-barrier1-yes.c.tsan-clang.out
+          - name: DRB186
+            cmd: ./DRB186-barrier2-no.c.tsan-clang.out
+          - name: DRB187
+            cmd: ./DRB187-barrier2-yes.c.tsan-clang.out
+          - name: DRB188
+            cmd: ./DRB188-barrier3-no.c.tsan-clang.out
+          - name: DRB189
+            cmd: ./DRB189-barrier3-yes.c.tsan-clang.out
+          - name: DRB190
+            cmd: ./DRB190-critical-section2-no.c.tsan-clang.out
+          - name: DRB191
+            cmd: ./DRB191-critical-section2-yes.c.tsan-clang.out
+          - name: DRB192
+            cmd: ./DRB192-critical-section3-no.c.tsan-clang.out
+          - name: DRB193
+            cmd: ./DRB193-critical-section3-yes.c.tsan-clang.out
+          - name: DRB194
+            cmd: ./DRB194-diffusion1-no.c.tsan-clang.out
+          - name: DRB195
+            cmd: ./DRB195-diffusion1-yes.c.tsan-clang.out
+          - name: DRB196
+            cmd: ./DRB196-diffusion2-no.c.tsan-clang.out
+          - name: DRB197
+            cmd: ./DRB197-diffusion2-yes.c.tsan-clang.out
+          - name: DRB198
+            cmd: ./DRB198-prodcons-no.c.tsan-clang.out
+          - name: DRB199
+            cmd: ./DRB199-prodcons-yes.c.tsan-clang.out
+          - name: DRB200
+            cmd: ./DRB200-sync1-no.c.tsan-clang.out
+          - name: DRB201
+            cmd: ./DRB201-sync1-yes.c.tsan-clang.out
+          - name: DRB202
+            cmd: ./DRB202-simd-broadcast-yes.c.tsan-clang.out
+          - name: DRB203
+            cmd: ./DRB203-simd-broadcast-no.c.tsan-clang.out
+          - name: DRB204
+            cmd: ./DRB204-simd-gather-yes.c.tsan-clang.out
+          - name: DRB205
+            cmd: ./DRB205-simd-gatherscatter-no.c.tsan-clang.out
+          - name: DRB206
+            cmd: ./DRB206-simd-scatter-yes.c.tsan-clang.out
+          - name: DRB207
+            cmd: ./DRB207-simd-loadstore-yes.c.tsan-clang.out
+          - name: DRB208
+            cmd: ./DRB208-simd-loadstore-no.c.tsan-clang.out
+
+      - name: DRACC
+        tests:
+          - name: DRACC_OMP_001
+            cmd: ./DRACC_OMP_001_Buffer_Overflow_Recursion_yes.exe
+          - name: DRACC_OMP_002
+            cmd: ./DRACC_OMP_002_Buffer_Overflow_Tasking_yes.exe
+          - name: DRACC_OMP_003
+            cmd: ./DRACC_OMP_003_Counter_no_lock_yes.exe
+          - name: DRACC_OMP_004
+            cmd: ./DRACC_OMP_004_Counter_no_lock_Intra_yes.exe
+          - name: DRACC_OMP_005
+            cmd: ./DRACC_OMP_005_Counter_no_lock_Inter_yes.exe
+          - name: DRACC_OMP_006
+            cmd: ./DRACC_OMP_006_Counter_no_lock_simd_yes.exe
+          - name: DRACC_OMP_007
+            cmd: ./DRACC_OMP_007_Counter_no_lock_simd_Inter_yes.exe
+          - name: DRACC_OMP_008
+            cmd: ./DRACC_OMP_008_Counter_no_lock_simd_Intra_yes.exe
+          - name: DRACC_OMP_009
+            cmd: ./DRACC_OMP_009_Counter_wrong_critical_yes.exe
+          - name: DRACC_OMP_010
+            cmd: ./DRACC_OMP_010_Counter_wrong_critical_Intra_yes.exe
+          - name: DRACC_OMP_011
+            cmd: ./DRACC_OMP_011_Counter_wrong_critical_Inter_yes.exe
+          - name: DRACC_OMP_012
+            cmd: ./DRACC_OMP_012_Counter_wrong_critical_simd_yes.exe
+          - name: DRACC_OMP_013
+            cmd: ./DRACC_OMP_013_Counter_wrong_critical_simd_Intra_yes.exe
+          - name: DRACC_OMP_014
+            cmd: ./DRACC_OMP_014_Counter_wrong_critical_simd_Inter_yes.exe
+          - name: DRACC_OMP_015
+            cmd: ./DRACC_OMP_015_Counter_wrong_lock_yes.exe
+          - name: DRACC_OMP_016
+            cmd: ./DRACC_OMP_016_Counter_wrong_lock_Intra_yes.exe
+          - name: DRACC_OMP_017
+            cmd: ./DRACC_OMP_017_Counter_wrong_lock_Inter_yes.exe
+          - name: DRACC_OMP_018
+            cmd: ./DRACC_OMP_018_Counter_wrong_lock_simd_yes.exe
+          - name: DRACC_OMP_019
+            cmd: ./DRACC_OMP_019_Counter_wrong_lock_simd_Intra_yes.exe
+          - name: DRACC_OMP_020
+            cmd: ./DRACC_OMP_020_Counter_wrong_lock_simd_Inter_yes.exe
+          - name: DRACC_OMP_022
+            cmd: ./DRACC_OMP_022_MxV_Missing_Data_yes.exe
+          - name: DRACC_OMP_023
+            cmd: ./DRACC_OMP_023_MxV_Partially_Missing_Data_yes.exe
+          - name: DRACC_OMP_024
+            cmd: ./DRACC_OMP_024_MxV_Missing_Enter_Data_yes.exe
+          - name: DRACC_OMP_025
+            cmd: ./DRACC_OMP_025_MxV_Partially_Missing_Enter_Data_yes.exe
+          - name: DRACC_OMP_026
+            cmd: ./DRACC_OMP_026_MxV_Missing_Exit_Data_yes.exe
+          - name: DRACC_OMP_027
+            cmd: ./DRACC_OMP_027_MxV_Partially_Missing_Exit_Data_yes.exe
+          - name: DRACC_OMP_028
+            cmd: ./DRACC_OMP_028_MxV_out_of_bounds_Copyin_other.exe
+          - name: DRACC_OMP_029
+            cmd: ./DRACC_OMP_029_MxV_out_of_bounds_Copyin_Enter_Data_other.exe
+          - name: DRACC_OMP_030
+            cmd: ./DRACC_OMP_030_MxV_out_of_bounds_Copyout_yes.exe
+          - name: DRACC_OMP_031
+            cmd: ./DRACC_OMP_031_MxV_out_of_bounds_Copyout_Exit_Data_yes.exe
+          - name: DRACC_OMP_032
+            cmd: ./DRACC_OMP_032_MxV_outdated_Data_yes.exe
+          - name: DRACC_OMP_033
+            cmd: ./DRACC_OMP_033_MxV_Partially_outdated_Data_yes.exe
+          - name: DRACC_OMP_034
+            cmd: ./DRACC_OMP_034_MxV_wrong_update_yes.exe
+          - name: DRACC_OMP_035
+            cmd: ./DRACC_OMP_035_SAXPY_without_Task_Barrier_yes.exe
+          - name: DRACC_OMP_036
+            cmd: ./DRACC_OMP_036_SAXPY_without_Task_Dependency_yes.exe
+          - name: DRACC_OMP_037
+            cmd: ./DRACC_OMP_037_Vector_add_Mult_no_Barrier_yes.exe
+          - name: DRACC_OMP_038
+            cmd: ./DRACC_OMP_038_Vector_add_Mult_no_Barrier_simd_yes.exe
+          - name: DRACC_OMP_039
+            cmd: ./DRACC_OMP_039_Vector_add_Mult_nowait_yes.exe
+          - name: DRACC_OMP_040
+            cmd: ./DRACC_OMP_040_Wrong_ordered_clause_yes.exe
+          - name: DRACC_OMP_041
+            cmd: ./DRACC_OMP_041_Wrong_ordered_clause_Intra_yes.exe
+          - name: DRACC_OMP_042
+            cmd: ./DRACC_OMP_042_Wrong_ordered_clause_Inter_yes.exe
+          - name: DRACC_OMP_043
+            cmd: ./DRACC_OMP_043_Wrong_ordered_clause_simd_yes.exe
+          - name: DRACC_OMP_044
+            cmd: ./DRACC_OMP_044_Wrong_ordered_clause_simd_Intra_yes.exe
+          - name: DRACC_OMP_045
+            cmd: ./DRACC_OMP_045_Wrong_ordered_clause_simd_Inter_yes.exe
+          - name: DRACC_OMP_046
+            cmd: ./DRACC_OMP_046_Counter_no_lock_Intra_non_deterministic_yes.exe
+          - name: DRACC_OMP_047
+            cmd: ./DRACC_OMP_047_Counter_no_lock_simd_Intra_non_deteministic_yes.exe
+          - name: DRACC_OMP_048
+            cmd: ./DRACC_OMP_048_atomic_interference_yes.exe
+          - name: DRACC_OMP_049
+            cmd: ./DRACC_OMP_049_MxV_missing_free_other.exe
+          - name: DRACC_OMP_050
+            cmd: ./DRACC_OMP_050_MxV_missing_allocation_other.exe
+          - name: DRACC_OMP_051
+            cmd: ./DRACC_OMP_051_MxV_working_no.exe
+          - name: DRACC_OMP_052
+            cmd: ./DRACC_OMP_052_Counter_working_atomic_no.exe
+          - name: DRACC_OMP_053
+            cmd: ./DRACC_OMP_053_Counter_working_reduction_no.exe
+          - name: DRACC_OMP_054
+            cmd: ./DRACC_OMP_054_Counter_working_atomic_inter_no.exe
+          - name: DRACC_OMP_055
+            cmd: ./DRACC_OMP_055_Counter_working_atomic_intra_no.exe
+          - name: DRACC_OMP_056
+            cmd: ./DRACC_OMP_056_Counter_working_critical_no.exe
+
+      - name: iris
+        tests:
+          - name: iris
+            cmd: ./test2
+
+      - name: npb-omp
+        tests:
+          - name: dc.S.x
+            cmd: ./dc.S.x
+            cleanup: rm ADC.*
+          - name: is.W.x
+            cmd: ./is.W.x
+            cleanup: rm ADC.*
+
+      - name: miniFE
+        tests:
+          - name: miniFE
+            cmd: ./miniFE.x
+            cleanup: rm miniFE.*.yaml
+
+      - name: miniAMR
+        tests:
+          - name: miniAMR
+            cmd: ./ma.x
+
+      - name: HPCCG
+        tests:
+          - name: HPCCG_64_64_64
+            cmd: ./test_HPCCG 64 64 64
+            cleanup: rm hpccg*
+
+      - name: kripke
+        tests:
+          - name: kripke_groups_8_niter_1
+            cmd: ./kripke.exe --groups 8 --niter 1
+
+      - name: lulesh
+        tests:
+          - name: lulesh_size_3
+            cmd: ./lulesh2.0 -q -s 3
+
+      - name: xsbench
+        tests:
+          - name: xsbench_small
+            cmd: ./XSBench -small
+
+      - name: rsbench
+        tests:
+          - name: rsbench_small
+            cmd: ./rsbench -s small
+
+      - name: quicksilver
+        tests:
+          - name: quicksilver_N_1
+            cmd: ./qs -N 1
+
+      - name: comd
+        tests:
+          - name: CoMD_N_1
+            cmd: ./CoMD-openmp -N 1
+            cleanup: rm CoMD*.yaml
+
+      - name: AMG
+        tests:
+          - name: AMG
+            before: module unload PrgEnv-cray/8.3.3 && module unload craype-x86-rome && module load openmpi/4.1.2-hpe && module load libfabric/1.11.0.4.125
+            cmd: ./amg && module list
+
+      - name: graphchi
+        tests:
+          - name: graphchi_pagerank_facebook
+            cmd: bin/example_apps/pagerank file data/facebook_combined.txt niters 5000 filetype edgelist
+
+      # - name: c-ray
+      #   tests:
+      #     - name: c-ray_8_threads
+      #       cmd: ./c-ray-mt -t 8 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #       cleanup: rm output.ppm
+      #     # - name: c-ray-16_threads
+      #     #   cmd: ./c-ray-mt -t 16 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #     #   cleanup: rm output.ppm
+      #     - name: c-ray_32_threads
+      #       cmd: ./c-ray-mt -t 32 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #       cleanup: rm output.ppm
+      #     # - name: c-ray_64_threads
+      #     #   cmd: ./c-ray-mt -t 64 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #     #   cleanup: rm output.ppm
+      #     - name: c-ray_128_threads
+      #       cmd: ./c-ray-mt -t 128 -s 1600x1200 -r 8 -i sphfract -o output.ppm
+      #       cleanup: rm output.ppm
+
+      # - name: graphicsmagick
+      #   tests:
+      #     - name: graphicsmagick_gaussian_1_8_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 8
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_1_32_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 32
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_1_128_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 128
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x1 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_32_8_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 8
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_32_32_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 32
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
+      #       cleanup: rm output.ppm
+      #     - name: graphicsmagick_gaussian_32_128_threads
+      #       env:
+      #         - name: OMP_NUM_THREADS
+      #           value: 128
+      #       cmd: bin/gm benchmark convert sample-photo-6000x4000.JPG -gaussian 0x20 output.ppm
+      #       cleanup: rm output.ppm
+
+  c11:
+    timeout: 1800
+    tests:
+      - name: cdschecker
+        tests:
+          - name: barrier
+            cmd: ./barrier
+
+          - name: chase-lev-deque
+            cmd: ./chase-lev-deque
+
+          - name: dekker-fences
+            cmd: ./dekker-fences
+
+          - name: linuxrwlocks
+            cmd: ./linuxrwlocks
+
+          - name: mcs-lock
+            cmd: ./mcs-lock
+
+          - name: mpmc-queue
+            cmd: ./mpmc-queue
+
+          - name: ms-queue
+            cmd: ./ms-queue
+
+          - name: spsc-queue
+            cmd: ./spsc-queue
+
+      - name: silo
+        tests:
+          - name: silo_dbtest
+            lib_paths:
+              - ./
+            cmd: ./dbtest
+
+      - name: iris
+        tests:
+          - name: iris
+            cmd: ./test2
+
+      - name: gdax
+        tests:
+          - name: gdax
+            lib_paths:
+              - ./dependencies/libcds-2.3.2/build-release/bin
+            cmd: ./demo
+
+      - name: mabain
+        tests:
+          - name: mb_rc_test
+            lib_paths:
+              - ./install/lib
+            cmd: ./mb_rc_test
+
+  temp:
+    timeout: 60
+    tests:
+      - name: AMG
+        tests:
+          - name: AMG
+            before: module unload PrgEnv-cray/8.3.3 && module unload craype-x86-rome && module load openmpi/4.1.2-hpe && module load libfabric/1.11.0.4.125
+            cmd: ./amg && module list
+      # - name: miniAMR
+      #   tests:
+      #     - name: miniAMR
+      #       before: module unload PrgEnv-cray/8.3.3 && module unload craype-x86-rome && module load openmpi/4.1.2-hpe && module load libfabric/1.11.0.4.125
+      #       cmd: ./ma.x

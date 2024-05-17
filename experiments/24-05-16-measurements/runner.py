@@ -325,7 +325,7 @@ def prepare_env(rt: Dict, llvm: Dict, shared_libs: List[str]):
 
 def prepare_report_file(rt_name: str):
     global REPORT_FILE_PATH
-    REPORT_FILE_PATH = f"report-{rt_name}.csv"
+    REPORT_FILE_PATH = f"results/report-{rt_name}.csv"
 
     with open(REPORT_FILE_PATH, "w") as f:
         writer = csv.writer(f)
@@ -706,6 +706,9 @@ def main():
         logging.error(f"Usage: python3 {sys.argv[0]} <category> <runtime>")
         sys.exit(1)
 
+    if not os.path.exists("results"):
+        os.mkdir("results")
+
     config = load_config()
 
     for rt in config.runtimes:
@@ -721,8 +724,12 @@ def main():
         prepare_env(rt, config.llvm, config.shared_libs)
         prepare_report_file(rt["name"])
         run_tests(rt["iterations"])
-        prepare_report_file(rt["name"]+"-no-report-bugs")
-        run_tests(False)
+
+        # if this run already does not report bugs (e.g. measurements)
+        # then we dont need to do the same thing again
+        if not ("report_bugs" in rt.keys() and rt["report_bugs"] == 0):
+            prepare_report_file(rt["name"]+"-no-report-bugs")
+            run_tests(rt["iterations"], False)
 
         logging.info("=== Finished running benchmarks for this runtime ===")
 

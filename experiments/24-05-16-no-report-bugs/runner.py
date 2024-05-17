@@ -325,7 +325,7 @@ def prepare_env(rt: Dict, llvm: Dict, shared_libs: List[str]):
 
 def prepare_report_file(rt_name: str):
     global REPORT_FILE_PATH
-    REPORT_FILE_PATH = f"report-{rt_name}.csv"
+    REPORT_FILE_PATH = f"results/report-{rt_name}.csv"
 
     with open(REPORT_FILE_PATH, "w") as f:
         writer = csv.writer(f)
@@ -705,6 +705,9 @@ def main():
     if len(sys.argv) < 3:
         logging.error(f"Usage: python3 {sys.argv[0]} <category> <runtime>")
         sys.exit(1)
+
+    if not os.path.exists("results"):
+        os.mkdir("results")
 
     config = load_config()
 

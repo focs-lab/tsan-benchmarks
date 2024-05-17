@@ -74,11 +74,11 @@ runtimes:
 
   - name: uclock-measurements
     iterations: 10
-    timeout: 300    # for measurements it really shouldnt take longer than 1min
+    timeout: 60    # for measurements it really shouldnt take longer than 1min
     openmp: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-measurements
     compiler-rt: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-measurements
     archer: /home/users/nus/dws.lim/minjian-experiments/tsan/runtimes/uclock-measurements
-    report_bugs: 0
+    # report_bugs: 0
 
   # for local testing
   - name: local

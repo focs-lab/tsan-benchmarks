@@ -178,31 +178,34 @@ class Builder:
             self.paths.ensure_path_exists(path)
             contents = open(path).read()
             if before not in contents:
-                logger.error(f"'{before}' not found in v8/{path}. Something must have changed in the V8 codebase.\
+                logger.error(f"'{before}' not found in {path}. Something must have changed in the V8 codebase.\
                               Cannot optimize TSan build although optimize_v8 is set in the config. Aborting!")
                 sys.exit(1)
             contents = contents.replace(before, after)
             open(path, "w").write(contents)
 
-
-        compiler_build_gn_path = self.paths.v8_path / "config" / "compiler" / "BUILD.gn"
-        search_and_replace(compiler_build_gn_path,
-                           'cflags = [ "-O2" ] + common_optimize_on_cflags',
-                           'cflags = [ "-O3" ] + common_optimize_on_cflags')
-
+        v8_build = self.paths.v8_path / "build"
+        v8_src = self.paths.v8_path / "src"
         build_gn_path = self.paths.v8_path / "BUILD.gn"
-        search_and_replace(build_gn_path,
-                           '"V8_IS_TSAN"',
-                           '# "V8_IS_TSAN"')
+        compiler_build_gn_path = v8_build / "config" / "compiler" / "BUILD.gn"
+        macros_path = v8_src / "base" / "macros.h"
+
+        shell.run_cmd("git checkout BUILD.gn", logger, self.paths.v8_path)
+        shell.run_cmd("git checkout config/compiler/BUILD.gn", logger, v8_build)
+        shell.run_cmd("git checkout base/macros.h", logger, v8_src)
+
         search_and_replace(build_gn_path,
                            'enabled_external_v8_defines += [ "V8_IS_TSAN" ]',
                            '# enabled_external_v8_defines += [ "V8_IS_TSAN" ]')
-
-        macros_path = self.paths.v8_path / "/src/base/macros.h"
+        search_and_replace(build_gn_path,
+                           '"V8_IS_TSAN",',
+                           '# "V8_IS_TSAN",')
+        search_and_replace(compiler_build_gn_path,
+                           'cflags = [ "-O2" ] + common_optimize_on_cflags',
+                           'cflags = [ "-O3" ] + common_optimize_on_cflags')
         search_and_replace(macros_path,
                            '#define IF_TSAN(V, ...) EXPAND(V(__VA_ARGS__))',
                            '#define IF_TSAN(V, ...)')
-
 
     def _rebuild_v8(self, commit: CommitInfo) -> None:
         self.paths.ensure_v8_exists()

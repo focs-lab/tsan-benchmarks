@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     init = subparsers.add_parser("init", help="Setup some boilerplate files e.g. config.yaml.")
     build = subparsers.add_parser("build", help="Build dependencies and benchmarks, e.g. LLVM and V8.")
     run = subparsers.add_parser("run", help="Run benchmarks.")
-    
+
     init.set_defaults(handler=generate_config)
     build.set_defaults(handler=build_dependencies)
     run.set_defaults(handler=run_benchmarks)
@@ -51,7 +51,8 @@ def init_context() -> Context:
 
 def generate_config(ctx: Context) -> None:
     ctx.logger.info(f"Generating and saving config to {ctx.args.config}")
-    # TODO(dwslim): implement
+    config = Config.to_dict(Config.defaults())
+    yaml.safe_dump(config, open(ctx.args.config, "w"))
 
 def build_dependencies(ctx: Context):
     ctx.logger.info(f"Building dependencies in programs/ directory")

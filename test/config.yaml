@@ -1,1 +1,6 @@
-name: test
+build_num_cpus: 64
+llvm_commit: 29ed6000d21e
+name: Default
+run_mysql: true
+run_v8: true
+v8_commit: b595bf35aca

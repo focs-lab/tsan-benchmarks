@@ -25,10 +25,22 @@ def parse_args() -> argparse.Namespace:
     build = subparsers.add_parser("build", help="Build dependencies and benchmarks, e.g. LLVM and V8.")
     run = subparsers.add_parser("run", help="Run benchmarks.")
 
+    build_ex = build.add_mutually_exclusive_group(required=True)
+    build_ex.add_argument("-n", "--name", help="Name of LLVM commit to build benchmarks for, according to the config file specified by -c.",
+                          dest="build_name")
+    build_ex.add_argument("-a", "--all", action="store_true", help="Build benchmarks for all LLVM commits in the config file.",
+                          dest="build_all")
+
+    run_ex = run.add_mutually_exclusive_group(required=True)
+    run_ex.add_argument("-n", "--name", help="Name of LLVM commit to run benchmarks for, according to the config file specified by -c.",
+                          dest="run_name")
+    run_ex.add_argument("-a", "--all", action="store_true", help="Run benchmarks for all LLVM commits in the config file.",
+                          dest="run_all")
+
     init.set_defaults(handler=generate_config)
     build.set_defaults(handler=build_dependencies)
     run.set_defaults(handler=run_benchmarks)
-    parser.set_defaults(handler=build_and_run_benchmarks)
+    parser.set_defaults(handler=run_benchmarks)
 
     args = parser.parse_args()
     return args
@@ -61,7 +73,10 @@ def build_dependencies(ctx: Context):
     builder_ctx = Context(ctx.args, ctx.config, builder_logger)
 
     builder = Builder(builder_ctx)
-    builder.build_all()
+    if ctx.args.build_all:
+        builder.build_all()
+    else:
+        builder.build_one(ctx.args.build_name)
 
 def run_benchmarks(ctx: Context):
     ctx.logger.info(f"Running benchmarks")
@@ -69,7 +84,10 @@ def run_benchmarks(ctx: Context):
     runner_logger = util.logger.create_logger("runner")
     runner_ctx = Context(ctx.args, ctx.config, runner_logger)
     runner = Runner(runner_ctx)
-    runner.run_all()
+    if ctx.args.run_all:
+        runner.run_all()
+    else:
+        runner.run_one(ctx.args.run_name)
 
 def build_and_run_benchmarks(ctx: Context):
     build_dependencies(ctx)

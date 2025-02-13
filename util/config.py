@@ -1,14 +1,30 @@
 from dataclasses import dataclass, asdict
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Tuple
+
+
+@dataclass
+class CommitInfo:
+    name: str
+    commit: str
+    with_tsan: bool
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
 
 @dataclass
 class Config:
     """Class for storing configuration fields."""
     name: str
-    llvm_commit: str
+
+    llvm_commits: List[CommitInfo]
     v8_commit: str
+    v8_baseline_name: str
+
+    optimize_v8: bool
+
     run_mysql: bool
     run_v8: bool
+
     build_num_cpus: int
 
     @staticmethod
@@ -17,20 +33,41 @@ class Config:
 
     @staticmethod
     def from_dict(d: Dict) -> "Config":
+        def get_llvm_commits() -> List[CommitInfo]:
+            commit_infos = []
+            for entry in d["llvm_commits"]:
+                commit_infos.append(CommitInfo(entry["name"], entry["commit"], entry["with_tsan"]))
+            return commit_infos
+
         return Config(
             name=d["name"],
-            llvm_commit=d["llvm_commit"],
+
+            llvm_commits=get_llvm_commits(),
+
             v8_commit=d["v8_commit"],
+            v8_baseline_name=d["v8_baseline_name"],
+
+            optimize_v8=d["optimize_v8"],
+
             run_mysql=d["run_mysql"],
             run_v8=d["run_v8"],
+
             build_num_cpus=d["build_num_cpus"])
 
     @staticmethod
     def defaults() -> "Config":
         return Config(
             name="Default",
-            llvm_commit="29ed6000d21e",
+
+            llvm_commits=[
+                CommitInfo("llvm1", "29ed6000d21e", False),
+                CommitInfo("llvm2", "20621e2", True),
+            ],
             v8_commit="b595bf35aca",
+            v8_baseline_name="llvm1",
+
+            optimize_v8=True,
+
             run_mysql=True,
             run_v8=True,
             build_num_cpus=64
@@ -38,5 +75,5 @@ class Config:
 
     def print_with(self, printer: Callable[[str], None]):
         printer(f"Name: {self.name}")
-        printer(f"LLVM Commit: {self.llvm_commit}")
+        # printer(f"LLVM Commit: {self.llvm_commit}")
         printer(f"V8 Commit: {self.v8_commit}")

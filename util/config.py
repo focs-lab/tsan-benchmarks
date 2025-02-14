@@ -16,6 +16,7 @@ class Config:
     """Class for storing configuration fields."""
     name: str
 
+    dev_llvm_commit: CommitInfo
     llvm_commits: List[CommitInfo]
     v8_commit: str
     v8_baseline_name: str
@@ -33,15 +34,19 @@ class Config:
 
     @staticmethod
     def from_dict(d: Dict) -> "Config":
+        def parse_commit_info(entry: Dict) -> CommitInfo:
+            return CommitInfo(entry["name"], entry["commit"], entry["with_tsan"])
+
         def get_llvm_commits() -> List[CommitInfo]:
             commit_infos = []
             for entry in d["llvm_commits"]:
-                commit_infos.append(CommitInfo(entry["name"], entry["commit"], entry["with_tsan"]))
+                commit_infos.append(parse_commit_info(entry))
             return commit_infos
 
         return Config(
             name=d["name"],
 
+            dev_llvm_commit=parse_commit_info(d["dev_llvm_commit"]),
             llvm_commits=get_llvm_commits(),
 
             v8_commit=d["v8_commit"],
@@ -59,6 +64,7 @@ class Config:
         return Config(
             name="Default",
 
+            dev_llvm_commit=CommitInfo("dev", "29ed6000d21e", True),
             llvm_commits=[
                 CommitInfo("llvm1", "29ed6000d21e", False),
                 CommitInfo("llvm2", "20621e2", True),

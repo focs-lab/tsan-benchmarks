@@ -1,4 +1,8 @@
 build_num_cpus: 64
+dev_llvm_commit:
+  commit: 29ed6000d21e
+  name: dev
+  with_tsan: true
 llvm_commits:
 - commit: 29ed6000d21e
   name: llvm1

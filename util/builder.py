@@ -1,4 +1,4 @@
-from util import Context, CommitInfo, Config, shell, Paths
+from util import Context, CommitInfo, Config, shell, Paths, enums
 from pathlib import Path
 
 import sys
@@ -15,6 +15,7 @@ class Builder:
 
         self.v8_commit = ctx.config.v8_commit
         self.llvm_commits = ctx.config.llvm_commits
+        self.dev_llvm_commit = ctx.config.dev_llvm_commit
         if len(self.llvm_commits) == 0:
             self.ctx.logger.error("llvm_commits field in config is empty. Aborting!")
             sys.exit(1)
@@ -27,10 +28,7 @@ class Builder:
         os.environ['PATH'] = str(self.paths.depot_path.absolute()) + os.pathsep + os.environ.get('PATH', '')
 
     def build_one(self, name: str) -> None:
-        self.paths.maybe_mkdir_programs()
-        # We are using V8's LLVM build script so pull it regardless of whether we want to run V8.
-        self._maybe_fetch_v8()
-        # self._sync_and_build_llvm()
+        self._prepare_build()
 
         commit = next(filter(lambda x: x.name == name, self.llvm_commits), None)
 
@@ -47,10 +45,7 @@ class Builder:
             self._rebuild_mysql(commit)
 
     def build_all(self) -> None:
-        self.paths.maybe_mkdir_programs()
-        # We are using V8's LLVM build script so pull it regardless of whether we want to run V8.
-        self._maybe_fetch_v8()
-        # self._sync_and_build_llvm()
+        self._prepare_build()
 
         for commit in self.llvm_commits:
             self._sync_and_build_llvm(commit)
@@ -58,6 +53,38 @@ class Builder:
                 self._rebuild_v8(commit)
             if self.run_mysql:
                 self._rebuild_mysql(commit)
+
+    def dev_v8(self, build_or_link: enums.DevMode) -> None:
+        sync_v8 = build_or_link != enums.DevMode.LINK
+        self._prepare_build(sync_v8)
+
+        self._dev_llvm(self.dev_llvm_commit)
+        if build_or_link == enums.DevMode.BUILD:
+            self._rebuild_v8(self.dev_llvm_commit)
+        elif build_or_link == enums.DevMode.LINK:
+            self._relink_v8(self.dev_llvm_commit)
+
+    def dev_mysql(self, build_or_link: enums.DevMode) -> None:
+        sync_v8 = build_or_link != enums.DevMode.LINK
+        self._prepare_build(sync_v8)
+
+        self._dev_llvm(self.dev_llvm_commit)
+        if build_or_link == enums.DevMode.BUILD:
+            self._rebuild_mysql(self.dev_llvm_commit)
+        elif build_or_link == enums.DevMode.LINK:
+            self._relink_mysql(self.dev_llvm_commit)
+
+    def dev_all(self, build_or_link: enums.DevMode) -> None:
+        sync_v8 = build_or_link != enums.DevMode.LINK
+        self._prepare_build(sync_v8)
+
+        self._dev_llvm(self.dev_llvm_commit)
+        if build_or_link == enums.DevMode.BUILD:
+            self._rebuild_v8(self.dev_llvm_commit)
+            self._rebuild_mysql(self.dev_llvm_commit)
+        elif build_or_link == enums.DevMode.LINK:
+            self._relink_v8(self.dev_llvm_commit)
+            self._relink_mysql(self.dev_llvm_commit)
 
     # def _maybe_clone_llvm(self) -> None:
     #     if self.paths.llvm_path.exists():
@@ -69,6 +96,18 @@ class Builder:
     #     shell.run_cmd("git clone https://github.com/focs-lab/llvm-project", logger, self.paths.programs_path)
     #     shell.run_cmd("git remote add upstream https://github.com/llvm/llvm-project", logger, self.paths.llvm_path)
     #     shell.run_cmd("git fetch upstream", logger, self.paths.llvm_path)
+
+    def _git_checkout_and_clean(self, commit: str, path: Path) -> None:
+        logger = self.ctx.logger
+        shell.run_cmd(f"git checkout -f {commit}", logger, path)
+        shell.run_cmd(f"git clean -f .", logger, path)
+
+    def _prepare_build(self, sync_v8: bool=True) -> None:
+        self.paths.maybe_mkdir_programs()
+        # We are using V8's LLVM build script so pull it regardless of whether we want to run V8.
+        self._maybe_fetch_v8()
+        if sync_v8:
+            self._sync_v8()
 
     def _maybe_clone_llvm_in_v8(self) -> None:
         self.paths.ensure_v8_exists()
@@ -86,7 +125,7 @@ class Builder:
         logger = self.ctx.logger
         logger.info(f"Syncing LLVM to commit {commit.commit}")
         shell.run_cmd(f"git fetch", logger, self.paths.llvm_path)
-        shell.run_cmd(f"git checkout {commit.commit}", logger, self.paths.llvm_path)
+        self._git_checkout_and_clean(commit.commit, self.paths.llvm_path)
 
     def _build_llvm(self) -> None:
         self.paths.ensure_llvm_exists()
@@ -112,6 +151,20 @@ class Builder:
         self._sync_llvm(commit)
         self._build_llvm()
 
+    def _dev_llvm(self, commit: CommitInfo) -> None:
+        self._maybe_clone_llvm_in_v8()
+        self._sync_llvm(commit)
+        self._patch_llvm()
+        shell.run_cmd(f"ninja -C third_party/llvm-build/Release+Asserts/ -j{self.build_num_cpus}", self.ctx.logger, self.paths.v8_path)
+
+    def _patch_llvm(self) -> None:
+        self.paths.ensure_llvm_exists()
+        self.paths.ensure_path_exists(self.paths.llvm_patch_path)
+
+        logger = self.ctx.logger
+        logger.info(f"Patching LLVM with {self.paths.llvm_patch_path}")
+        shell.run_cmd(f"git apply {self.paths.llvm_patch_path.absolute()}", logger, self.paths.llvm_path)
+
     def _maybe_clone_depot_tools(self) -> None:
         if self.paths.depot_path.is_dir():
             return
@@ -130,14 +183,20 @@ class Builder:
         self._maybe_clone_depot_tools()
         shell.run_cmd("gclient", logger)
         shell.run_cmd("fetch v8", logger, self.paths.programs_path)
-        shell.run_cmd(f"git checkout {self.v8_commit}", logger, self.paths.v8_path)
-        shell.run_cmd(f"gclient sync", logger, self.paths.v8_path)
+        # shell.run_cmd(f"git checkout -f {self.v8_commit}", logger, self.paths.v8_path)
+        # shell.run_cmd(f"gclient sync", logger, self.paths.v8_path)
 
     def _sync_v8(self) -> None:
         self.paths.ensure_v8_exists()
         logger = self.ctx.logger
         logger.info("Syncing V8")
-        shell.run_cmd(f"git checkout {self.v8_commit}", logger, self.paths.v8_path)
+        self._git_checkout_and_clean(self.v8_commit, self.paths.v8_path)
+
+        # these are the files that we patched
+        # im not sure yet if there is a better way of keeping track, this feels error prone
+        self._git_checkout_and_clean(".", self.paths.v8_path / "build")
+        self._git_checkout_and_clean(".", self.paths.v8_path / "src" / "base")
+        self._git_checkout_and_clean(".", self.paths.v8_path / "tools" / "clang")
         shell.run_cmd(f"gclient sync -D", logger, self.paths.v8_path)
 
     def _setup_v8_build(self, name: str, with_tsan: bool) -> None:
@@ -220,10 +279,26 @@ class Builder:
         shell.run_cmd(f"ninja -C out/{commit.name} -t clean", logger, self.paths.v8_path)
         shell.run_cmd(f"ninja -C out/{commit.name} -j{self.build_num_cpus} d8", logger, self.paths.v8_path)
 
+    def _relink_v8(self, commit: CommitInfo) -> None:
+        self.paths.ensure_v8_exists()
+
+        d8_path = self.paths.v8_path / "out" / commit.name / "d8"
+        self.paths.ensure_path_exists(d8_path)
+
+        logger = self.ctx.logger
+        logger.info(f"Relinking V8")
+
+        shell.run_cmd(f"rm out/{commit.name}/d8", logger, self.paths.v8_path)
+        shell.run_cmd(f"ninja -C out/{commit.name} -j{self.build_num_cpus} d8", logger, self.paths.v8_path)
+
     def _maybe_download_mysql(self) -> None:
         # TODO(dwslim): implement
         pass
 
     def _rebuild_mysql(self, commit: CommitInfo) -> None:
+        # TODO(dwslim): implement
+        pass
+
+    def _relink_mysql(self, commit: CommitInfo) -> None:
         # TODO(dwslim): implement
         pass

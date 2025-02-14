@@ -1,3 +1,5 @@
+from util import Paths
+
 import logging
 
 def create_logger(name: str) -> logging.Logger:
@@ -12,7 +14,7 @@ def create_logger(name: str) -> logging.Logger:
     )
     stream_handler.setFormatter(formatter)
 
-    file_handler = logging.FileHandler("tbench.log")
+    file_handler = logging.FileHandler(Paths.log_path)
     file_handler.setFormatter(formatter)
 
     logger.addHandler(stream_handler)

@@ -5,15 +5,21 @@ import sys
 
 
 class Paths:
+    config_path = Path("config.yaml")
+    log_path = Path("tbench.log")
+    llvm_patch_path = Path("llvm.patch")
+
+    # For builder.py and runner.py
+    programs_path = Path("programs")
+    depot_path = programs_path / "depot_tools"
+    v8_path = programs_path / "v8"
+    llvm_path = v8_path / "third_party" / "llvm"
+    results_path = Path("results")
 
     def __init__(self, ctx: Context):
         self.logger = ctx.logger
 
-        self.programs_path = Path("programs")
-        self.depot_path = self.programs_path / "depot_tools"
-        self.v8_path = self.programs_path / "v8"
-        self.llvm_path = self.v8_path / "third_party" / "llvm"
-        self.results_path = Path("results")
+
 
     def maybe_mkdir(self, path: Path) -> None:
         if path.exists():

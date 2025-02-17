@@ -1,6 +1,7 @@
 from util import Context, CommitInfo, Config, shell, Paths, enums
 from pathlib import Path
 
+import shutil
 import sys
 import os
 
@@ -64,6 +65,8 @@ class Builder:
         elif build_or_link == enums.DevMode.LINK:
             self._relink_v8(self.dev_llvm_commit)
 
+        shutil.copy(self.paths.llvm_patch_path, self.paths.v8_path / "out" / self.dev_llvm_commit.name)
+
     def dev_mysql(self, build_or_link: enums.DevMode) -> None:
         sync_v8 = build_or_link != enums.DevMode.LINK
         self._prepare_build(sync_v8)
@@ -76,15 +79,8 @@ class Builder:
 
     def dev_all(self, build_or_link: enums.DevMode) -> None:
         sync_v8 = build_or_link != enums.DevMode.LINK
-        self._prepare_build(sync_v8)
-
-        self._dev_llvm(self.dev_llvm_commit)
-        if build_or_link == enums.DevMode.BUILD:
-            self._rebuild_v8(self.dev_llvm_commit)
-            self._rebuild_mysql(self.dev_llvm_commit)
-        elif build_or_link == enums.DevMode.LINK:
-            self._relink_v8(self.dev_llvm_commit)
-            self._relink_mysql(self.dev_llvm_commit)
+        self.dev_v8(build_or_link)
+        self.dev_mysql(build_or_link)
 
     # def _maybe_clone_llvm(self) -> None:
     #     if self.paths.llvm_path.exists():

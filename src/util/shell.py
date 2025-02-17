@@ -7,7 +7,7 @@ import logging
 import sys
 
 
-TIMEOUT = 600  # 10 mins
+TIMEOUT = 3600  # 10 mins
 
 
 def run_cmd(cmd: str, logger: logging.Logger, cwd: Path=Path(".")) -> None:
@@ -21,6 +21,7 @@ def run_cmd_list(cmd: List[str], logger: logging.Logger, cwd: Path=Path(".")) ->
         sys.exit(1)
     except subprocess.TimeoutExpired:
         logger.error(traceback.format_exc())
+        logger.error("The following command timed out after running for 1 hour. It is probably not intended. Something might have gone wrong, or it could just have been due to some download process being stuck.")
         sys.exit(1)
 
 def run_cmd_with_out(cmd: str, logger: logging.Logger, out_file: Path, cwd: Path=Path(".")) -> None:
@@ -34,6 +35,7 @@ def run_cmdlist_with_out(cmd: List[str], logger: logging.Logger, out_file: Path,
         sys.exit(1)
     except subprocess.TimeoutExpired:
         logger.error(traceback.format_exc())
+        logger.error("The following command timed out after running for 1 hour. It is probably not intended. Something might have gone wrong, or it could just have been due to some download process being stuck.")
         sys.exit(1)
 
 def check_cmd_output(cmd: str, logger: logging.Logger, cwd: Path=Path(".")) -> None:
@@ -47,4 +49,5 @@ def check_cmdlist_output(cmd: List[str], logger: logging.Logger, cwd: Path=Path(
         sys.exit(1)
     except subprocess.TimeoutExpired:
         logger.error(traceback.format_exc())
+        logger.error("The following command timed out after running for 1 hour. It is probably not intended. Something might have gone wrong, or it could just have been due to some download process being stuck.")
         sys.exit(1)

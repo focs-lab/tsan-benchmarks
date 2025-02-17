@@ -179,7 +179,7 @@ class Runner:
 
         def make_report_header() -> str:
             header = ""
-            header += f"=== Config:\n{open(self.paths.config_path).read()}\n\n"
+            header += f"=== Config:\n{open(Path(self.ctx.args.config)).read()}\n\n"
             header += f"=== Dev LLVM Patch:\n{open(self.paths.v8_path / 'out' / self.dev_llvm_commit.name / self.paths.llvm_patch_path).read()}\n\n"
             return header
 

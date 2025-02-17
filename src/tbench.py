@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 import argparse
 import logging
+import sys
 import yaml
 
 import util
@@ -20,7 +22,8 @@ def parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(help="If none of the options are specified,\
                                              tbench will build all dependencies and benchmarks,\
                                              then run all benchmarks.",
-                                       dest="cmd")
+                                       dest="cmd",
+                                       required=True)
     init = subparsers.add_parser("init", help=f"Setup some boilerplate files e.g. {Paths.config_path}.")
     build = subparsers.add_parser("build", help="Build dependencies and benchmarks, e.g. LLVM and V8.")
     run = subparsers.add_parser("run", help="Run benchmarks.")
@@ -60,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     build.set_defaults(handler=build_dependencies)
     dev.set_defaults(handler=build_dev)
     run.set_defaults(handler=run_benchmarks)
-    parser.set_defaults(handler=run_benchmarks)
+    # parser.set_defaults(handler=run_benchmarks)
 
     args = parser.parse_args()
     return args
@@ -69,7 +72,11 @@ def setup_logger(args: argparse.Namespace) -> logging.Logger:
     return util.logger.create_logger("main")
 
 def parse_config(args: argparse.Namespace, logger: logging.Logger) -> Config:
-    config_dict = yaml.safe_load(open(args.config))
+    config_path = Path(args.config)
+    if not config_path.exists():
+        logger.error(f"Config file {config_path} not found. Aborting!")
+        sys.exit(1)
+    config_dict = yaml.safe_load(open(config_path))
     config = Config.from_dict(config_dict)
     logger.info(f"Loaded configuration from {args.config}")
     config.print_with(logger.info)

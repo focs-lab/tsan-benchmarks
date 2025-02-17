@@ -7,12 +7,15 @@ import logging
 import sys
 
 
+TIMEOUT = 600  # 10 mins
+
+
 def run_cmd(cmd: str, logger: logging.Logger, cwd: Path=Path(".")) -> None:
     run_cmd_list(cmd.split(), logger, cwd)
 
 def run_cmd_list(cmd: List[str], logger: logging.Logger, cwd: Path=Path(".")) -> None:
     try:
-        subprocess.run(cmd, cwd=cwd)
+        subprocess.run(cmd, cwd=cwd, check=True, timeout=TIMEOUT)
     except subprocess.CalledProcessError:
         logger.error(traceback.format_exc())
         sys.exit(1)
@@ -25,7 +28,7 @@ def run_cmd_with_out(cmd: str, logger: logging.Logger, out_file: Path, cwd: Path
 
 def run_cmdlist_with_out(cmd: List[str], logger: logging.Logger, out_file: Path, cwd: Path=Path(".")) -> None:
     try:
-        subprocess.run(cmd, cwd=cwd, stdout=open(out_file, "w"))
+        subprocess.run(cmd, cwd=cwd, stdout=open(out_file, "w"), check=True, timeout=TIMEOUT)
     except subprocess.CalledProcessError:
         logger.error(traceback.format_exc())
         sys.exit(1)
@@ -38,7 +41,7 @@ def check_cmd_output(cmd: str, logger: logging.Logger, cwd: Path=Path(".")) -> N
 
 def check_cmdlist_output(cmd: List[str], logger: logging.Logger, cwd: Path=Path(".")) -> bytes:
     try:
-        return subprocess.check_output(cmd, cwd=cwd)
+        return subprocess.check_output(cmd, cwd=cwd, timeout=TIMEOUT)
     except subprocess.CalledProcessError:
         logger.error(traceback.format_exc())
         sys.exit(1)

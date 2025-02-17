@@ -23,7 +23,7 @@ class Report:
 class Runner:
     ctx: Context
 
-    def __init__(self, ctx: Context):
+    def __init__(self, ctx: Context, small: bool):
         self.ctx = ctx
         self.paths = Paths(ctx)
         self.llvm_commits = ctx.config.llvm_commits
@@ -35,6 +35,8 @@ class Runner:
         self.run_mysql = ctx.config.run_mysql
 
         self.v8_suites = [V8Suite.SunSpider, V8Suite.Octane, V8Suite.Kraken]
+
+        self.small = small
 
     def run_one(self, name: str) -> None:
         report = Report()
@@ -79,19 +81,19 @@ class Runner:
         match suite:
             case V8Suite.Octane:
                 setup = BenchmarkSetup(
-                    runs=10,
+                    runs=10 if not self.small else 1,
                     suite_path=self.paths.v8_benchmarks_path / "octane",
                     js_path=self.paths.v8_benchmarks_path / "octane" / "run.js"
                 )
             case V8Suite.Kraken:
                 setup = BenchmarkSetup(
-                    runs=80,
+                    runs=80 if not self.small else 1,
                     suite_path=self.paths.v8_benchmarks_path / "kraken",
                     js_path=self.paths.v8_csuite_path.absolute() / "run-kraken.js"
                 )
             case V8Suite.SunSpider:
                 setup = BenchmarkSetup(
-                    runs=100,
+                    runs=100 if not self.small else 1,
                     suite_path=self.paths.v8_benchmarks_path / "sunspider",
                     js_path=self.paths.v8_csuite_path.absolute() / "sunspider-standalone-driver.js"
                 )

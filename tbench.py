@@ -41,8 +41,8 @@ def parse_args() -> argparse.Namespace:
     run_ex.add_argument("-a", "--all", action="store_true", help="Run benchmarks for all LLVM commits in the config file.",
                           dest="run_all")
 
-    dev_build = dev.add_subparsers(help="`dev link` if you just want to relink the modified compiler-rt, this just takes seconds.\
-                                         `dev build` will rebuild the whole codebase which takes longer.")
+    run.add_argument("-s", "--small", action="store_true", help="Run benchmarks at smaller scale for fast testing.",
+                     dest="run_small")
 
     dev_ex = dev.add_mutually_exclusive_group(required=True)
     dev_ex.add_argument("--v8", help="Build V8.", action="store_true", dest="dev_v8")
@@ -118,7 +118,7 @@ def run_benchmarks(ctx: Context):
 
     runner_logger = util.logger.create_logger("runner")
     runner_ctx = Context(ctx.args, ctx.config, runner_logger)
-    runner = Runner(runner_ctx)
+    runner = Runner(runner_ctx, ctx.args.run_small)
     if ctx.args.run_all:
         runner.run_all()
     else:

@@ -69,6 +69,8 @@ After building the benchmark programs, you can run them with `tbench run -a`.
 You can specify a specific LLVM version with `tbench run -n <name>`.
 You might use this often because you might not want to run those benchmarks that have already been ran once before.
 
+When the run is complete, you can find a report of your results in the `reports` folder.
+
 ### Dev
 
 ```

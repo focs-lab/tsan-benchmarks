@@ -78,7 +78,6 @@ class Builder:
             self._relink_mysql(self.dev_llvm_commit)
 
     def dev_all(self, build_or_link: enums.DevMode) -> None:
-        sync_v8 = build_or_link != enums.DevMode.LINK
         self.dev_v8(build_or_link)
         self.dev_mysql(build_or_link)
 
@@ -150,6 +149,9 @@ class Builder:
     def _dev_llvm(self, commit: CommitInfo) -> None:
         self._maybe_clone_llvm_in_v8()
         self._sync_llvm(commit)
+        llvm_build_path = self.paths.v8_path / "third_party" / "llvm-build"
+        if not llvm_build_path.exists():
+            self._build_llvm()
         self._patch_llvm()
         shell.run_cmd(f"ninja -C third_party/llvm-build/Release+Asserts/ -j{self.build_num_cpus}", self.ctx.logger, self.paths.v8_path)
 

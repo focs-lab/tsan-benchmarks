@@ -104,13 +104,7 @@ If you modified other parts of LLVM like the instrumentation pass itself, then y
 rebuild every single source file so that your changes to the instrumentation are applied throughout the whole program.
 
 If it is your first time building the dev version, you must specify the `--build` option, otherwise with `--link` it will fail with an error,
-because the CMakeFile
-
-TODO:
-- first time running dev doesnt work because llvm might not have been setup
-- run dev version if it exists, but dont error if it doesnt
-
-
+because CMake is not set up yet.
 
 ## Troubleshooting
 

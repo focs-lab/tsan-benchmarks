@@ -117,6 +117,9 @@ class Runner:
         logger = self.ctx.logger
         logger.info(f"Running V8 benchmark - {suite.name}")
         for commit in self.llvm_commits:
+            d8_path = self.paths.v8_path / "out" / commit.name / "d8"
+            if not d8_path.exists():
+                logger.warning(f"Wanted to run d8 built with '{commit.name}' but out/{commit.name}/d8 is not found. Skipping!")
             self._run_v8_benchmark_for_commit(suite, commit)
 
     def _run_benchmark_for_one_v8(self, name: str) -> None:

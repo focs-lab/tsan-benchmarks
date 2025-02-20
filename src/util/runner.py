@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from util import Context, Paths, shell, CommitInfo
-from util.enums import V8Suite
+from util.enums import V8Suite, Target
 from typing import List
 import datetime
 import sys
@@ -23,7 +23,7 @@ class Report:
 class Runner:
     ctx: Context
 
-    def __init__(self, ctx: Context, small: bool):
+    def __init__(self, ctx: Context, small: bool, target: Target):
         self.ctx = ctx
         self.paths = Paths(ctx)
         self.llvm_commits = ctx.config.llvm_commits
@@ -31,12 +31,12 @@ class Runner:
         self.dev_llvm_commit = ctx.config.dev_llvm_commit
         self.v8_baseline_name = ctx.config.v8_baseline_name
 
-        self.run_v8 = ctx.config.run_v8
-        self.run_mysql = ctx.config.run_mysql
-
         self.v8_suites = [V8Suite.SunSpider, V8Suite.Octane, V8Suite.Kraken]
 
         self.small = small
+
+        self.run_v8 = target == Target.V8 or target == Target.ALL
+        self.run_mysql = target == Target.MYSQL or target == Target.ALL
 
     def run_one(self, name: str) -> None:
         report = Report()

@@ -14,6 +14,12 @@ Clone this repo and install.
 pip3 install .
 ```
 
+### Prerequisites
+
+```
+sudo apt install -y build-essential make m4
+```
+
 ## Usage
 
 This guide assumes that it is your first time using tbench.

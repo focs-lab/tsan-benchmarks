@@ -22,11 +22,11 @@ class Config:
     v8_baseline_name: str
 
     optimize_v8: bool
-
-    run_mysql: bool
-    run_v8: bool
+    optimize_mysql: bool
 
     build_num_cpus: int
+
+    mysql_download_link: str
 
     @staticmethod
     def to_dict(config: "Config") -> Dict:
@@ -53,11 +53,10 @@ class Config:
             v8_baseline_name=d["v8_baseline_name"],
 
             optimize_v8=d["optimize_v8"],
+            optimize_mysql=d["optimize_mysql"],
 
-            run_mysql=d["run_mysql"],
-            run_v8=d["run_v8"],
-
-            build_num_cpus=d["build_num_cpus"])
+            build_num_cpus=d["build_num_cpus"],
+            mysql_download_link=d["mysql_download_link"])
 
     @staticmethod
     def defaults() -> "Config":
@@ -73,10 +72,11 @@ class Config:
             v8_baseline_name="llvm1",
 
             optimize_v8=True,
+            optimize_mysql=True,
 
-            run_mysql=True,
-            run_v8=True,
-            build_num_cpus=64
+            build_num_cpus=64,
+
+            mysql_download_link="https://github.com/mysql/mysql-server/archive/refs/tags/mysql-8.0.39.tar.gz"
         )
 
     def print_with(self, printer: Callable[[str], None]):

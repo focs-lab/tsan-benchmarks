@@ -9,6 +9,16 @@ import sys
 
 TIMEOUT = 3600  # 10 mins
 
+def run_cmd_in_shell(cmd: str, logger: logging.Logger, cwd: Path=Path(".")) -> None:
+    try:
+        subprocess.run(cmd, cwd=cwd, shell=True, check=True, timeout=TIMEOUT)
+    except subprocess.CalledProcessError:
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+    except subprocess.TimeoutExpired:
+        logger.error(traceback.format_exc())
+        logger.error("The following command timed out after running for 1 hour. It is probably not intended. Something might have gone wrong, or it could just have been due to some download process being stuck.")
+        sys.exit(1)
 
 def run_cmd(cmd: str, logger: logging.Logger, cwd: Path=Path(".")) -> None:
     run_cmd_list(cmd.split(), logger, cwd)

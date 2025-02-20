@@ -9,7 +9,7 @@ import os
 class Builder:
     ctx: Context
 
-    def __init__(self, ctx: Context):
+    def __init__(self, ctx: Context, target: enums.Target):
         self.ctx = ctx
 
         self.paths = Paths(ctx)
@@ -21,10 +21,13 @@ class Builder:
             self.ctx.logger.error("llvm_commits field in config is empty. Aborting!")
             sys.exit(1)
 
-        self.run_mysql = ctx.config.run_mysql
-        self.run_v8 = ctx.config.run_v8
+        self.mysql_download_link = ctx.config.mysql_download_link
+
         self.optimize_v8 = ctx.config.optimize_v8
         self.build_num_cpus = ctx.config.build_num_cpus
+
+        self.build_v8 = target == enums.Target.V8 or target == enums.Target.ALL
+        self.build_mysql = target == enums.Target.MYSQL or target == enums.Target.ALL
 
         os.environ['PATH'] = str(self.paths.depot_path.absolute()) + os.pathsep + os.environ.get('PATH', '')
 
@@ -39,10 +42,10 @@ class Builder:
             sys.exit(1)
 
         logger.info(f"Building benchmarks with LLVM commit {commit.commit} ({name})")
-        self._sync_and_build_llvm(commit)
-        if self.run_v8:
+        # self._sync_and_build_llvm(commit)
+        if self.build_v8:
             self._rebuild_v8(commit)
-        if self.run_mysql:
+        if self.build_mysql:
             self._rebuild_mysql(commit)
 
     def build_all(self) -> None:
@@ -50,9 +53,9 @@ class Builder:
 
         for commit in self.llvm_commits:
             self._sync_and_build_llvm(commit)
-            if self.run_v8:
+            if self.build_v8:
                 self._rebuild_v8(commit)
-            if self.run_mysql:
+            if self.build_mysql:
                 self._rebuild_mysql(commit)
 
     def dev_v8(self, build_or_link: enums.DevMode) -> None:
@@ -103,6 +106,9 @@ class Builder:
         self._maybe_fetch_v8()
         if sync_v8:
             self._sync_v8()
+
+        if self.build_mysql:
+            self._maybe_download_mysql()
 
     def _maybe_clone_llvm_in_v8(self) -> None:
         self.paths.ensure_v8_exists()
@@ -268,7 +274,7 @@ class Builder:
         self.paths.ensure_v8_exists()
 
         logger = self.ctx.logger
-        logger.info(f"Building V8")
+        logger.info(f"Building V8 for {commit.name}")
 
         if self.optimize_v8:
             self._patch_v8()
@@ -284,18 +290,182 @@ class Builder:
         self.paths.ensure_path_exists(d8_path)
 
         logger = self.ctx.logger
-        logger.info(f"Relinking V8")
+        logger.info(f"Relinking V8 for {commit.name}")
 
         shell.run_cmd(f"rm out/{commit.name}/d8", logger, self.paths.v8_path)
         shell.run_cmd(f"ninja -C out/{commit.name} -j{self.build_num_cpus} d8", logger, self.paths.v8_path)
 
     def _maybe_download_mysql(self) -> None:
-        # TODO(dwslim): implement
-        pass
+        self.paths.maybe_mkdir_programs()
+        if self.paths.mysql_path.exists():
+            return
+
+        logger = self.ctx.logger
+        if not self.mysql_download_link.endswith(".tar.gz"):
+            logger.error("Expected mysql_download_link in config to end with '.tar.gz' but it doesn't. Aborting!")
+            sys.exit(1)
+        shell.run_cmd(f"wget {self.mysql_download_link} -O mysql.tar.gz", logger, self.paths.programs_path)
+        shell.run_cmd(f"tar -xzvf mysql.tar.gz", logger, self.paths.programs_path)
+
+        mysql_name = "mysql-server-" + self.mysql_download_link.split("/")[-1].split(".tar.gz")[0]
+        mysql_path = self.paths.programs_path / mysql_name
+
+        if not mysql_path.exists():
+            logger.error(f"Expected to find {mysql_path} but it is missing. Aborting!")
+            sys.exit(1)
+
+        shutil.move(mysql_path, self.paths.mysql_path)
+
+        mysql_tar_path = self.paths.programs_path / "mysql.tar.gz"
+        mysql_tar_path.unlink()
+
+    def _patch_mysql(self) -> None:
+        self.paths.ensure_v8_exists()
+
+        logger = self.ctx.logger
+        logger.info(f"Patching V8 to optimize TSan builds with O3")
+
+        def search_and_replace(path: Path, before: str, after: str) -> None:
+            self.paths.ensure_path_exists(path)
+            contents = open(path).read()
+            if before not in contents:
+                logger.error(f"'{before}' not found in {path}. Something must have changed in the MySQL codebase.\
+                              Cannot optimize TSan build although optimize_mysql is set in the config. Aborting!")
+                sys.exit(1)
+            contents = contents.replace(before, after)
+            open(path, "w").write(contents)
+
+        cmakelists_path = self.paths.mysql_path / "CMakeLists.txt"
+        search_and_replace(cmakelists_path,
+                           'STRING_APPEND(CMAKE_C_FLAGS   " -O1 -fno-inline")',
+                           '# STRING_APPEND(CMAKE_C_FLAGS   " -O1 -fno-inline")')
+        search_and_replace(cmakelists_path,
+                           'STRING_APPEND(CMAKE_CXX_FLAGS " -O1 -fno-inline")',
+                           '# STRING_APPEND(CMAKE_CXX_FLAGS " -O1 -fno-inline")')
 
     def _rebuild_mysql(self, commit: CommitInfo) -> None:
-        # TODO(dwslim): implement
-        pass
+        self.paths.ensure_path_exists(self.paths.mysql_path)
+
+        logger = self.ctx.logger
+        logger.info(f"Building MySQL with {commit.name}")
+
+        downloads_path = self.paths.mysql_path / "downloads"
+        usr_path = downloads_path / "usr"
+        downloads_path.mkdir(exist_ok=True)
+        usr_path.mkdir(exist_ok=True)
+
+        def build_bison():
+            bison_usr_path = usr_path / "bin" / "bison"
+            if bison_usr_path.exists():
+                return
+
+            bison_dl_cmds = [
+                "wget https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz",
+                "tar -xzvf bison-3.8.2.tar.gz"
+            ]
+            bison_build_cmds = [
+                "./configure --prefix=$(pwd)/../usr",
+                "make -j`nproc`",
+                "make install"
+            ]
+            bison_path = downloads_path / "bison-3.8.2"
+
+            for cmd in bison_dl_cmds:
+                shell.run_cmd_in_shell(cmd, logger, downloads_path)
+            for cmd in bison_build_cmds:
+                shell.run_cmd_in_shell(cmd, logger, bison_path)
+
+        def build_openssl():
+            openssl_usr_path = usr_path / "bin" / "openssl"
+            if openssl_usr_path.exists():
+                return
+
+            openssl_dl_cmds = [
+                "wget https://github.com/openssl/openssl/releases/download/openssl-3.0.13/openssl-3.0.13.tar.gz",
+                "tar -xzvf openssl-3.0.13.tar.gz"
+            ]
+            openssl_build_cmds = [
+                "./Configure --prefix=$(pwd)/../usr",
+                "make -j`nproc`",
+                "make install"
+            ]
+            openssl_path = downloads_path / "openssl-3.0.13"
+            for cmd in openssl_dl_cmds:
+                shell.run_cmd_in_shell(cmd, logger, downloads_path)
+            for cmd in openssl_build_cmds:
+                shell.run_cmd_in_shell(cmd, logger, openssl_path)
+
+        def build_libtirpc():
+            libtirpc_usr_path = usr_path / "lib" / "libtirpc.so"
+            if libtirpc_usr_path.exists():
+                return
+
+            libtirpc_dl_cmds = [
+                "wget -O libtirpc-1.3.5.tar.bz2 https://sourceforge.net/projects/libtirpc/files/libtirpc/1.3.5/libtirpc-1.3.5.tar.bz2/download",
+                "tar -xf libtirpc-1.3.5.tar.bz2"
+            ]
+            libtirpc_build_cmds = [
+                "./configure --prefix=$(pwd)/../usr --disable-gssapi",
+                "make -j`nproc`",
+                "make install"
+            ]
+            libtirpc_path = downloads_path / "libtirpc-1.3.5"
+            for cmd in libtirpc_dl_cmds:
+                shell.run_cmd_in_shell(cmd, logger, downloads_path)
+            for cmd in libtirpc_build_cmds:
+                shell.run_cmd_in_shell(cmd, logger, libtirpc_path)
+
+        def build_patchelf():
+            patchelf_usr_path = usr_path / "bin" / "patchelf"
+            if patchelf_usr_path.exists():
+                return
+
+            patchelf_dl_cmds = [
+                "wget https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0.tar.gz",
+                "tar -xzvf patchelf-0.18.0.tar.gz"
+            ]
+            patchelf_build_cmds = [
+                "./configure --prefix=$(pwd)/../usr",
+                "make -j`nproc`",
+                "make install"
+            ]
+            patchelf_path = downloads_path / "patchelf-0.18.0"
+            for cmd in patchelf_dl_cmds:
+                shell.run_cmd_in_shell(cmd, logger, downloads_path)
+            for cmd in patchelf_build_cmds:
+                shell.run_cmd_in_shell(cmd, logger, patchelf_path)
+
+        build_bison()
+        build_openssl()
+        build_libtirpc()
+        build_patchelf()
+
+        self._patch_mysql()
+
+        mysql_cmake = [
+            "cmake",
+            "-S", ".", "-B", f"build-{commit.name}",
+            f"-DCMAKE_INSTALL_PREFIX=dist-{commit.name}", "-DWITH_TSAN=ON",
+            f"-DCMAKE_C_COMPILER={self.paths.llvm_build_path.absolute()}/bin/clang",
+            f"-DCMAKE_CXX_COMPILER={self.paths.llvm_build_path.absolute()}/bin/clang++",
+            "-DDOWNLOAD_BOOST=1",
+            "-DWITH_BOOST=downloads",
+            "-DWITH_UNIT_TESTS=OFF",
+            "-DINSTALL_MYSQLTESTDIR=",
+            f"-DCMAKE_PREFIX_PATH={usr_path.absolute()}",
+            f"-DWITH_SSL={usr_path.absolute()}"
+        ]
+
+        shell.run_cmd_list(mysql_cmake, logger, self.paths.mysql_path)
+
+        mysql_cmake.extend([
+            f"-DCMAKE_C_FLAGS='-I{usr_path.absolute()}/include -L{usr_path.absolute()}/lib -L{usr_path.absolute()}/lib64'",
+            f"-DCMAKE_CXX_FLAGS='-I{usr_path.absolute()}/include -L{usr_path.absolute()}/lib -L{usr_path.absolute()}/lib64'"
+        ])
+        shell.run_cmd_list(mysql_cmake, logger, self.paths.mysql_path)
+
+        shell.run_cmd(f"cmake --build build-{commit.name} -j {self.build_num_cpus}", logger, self.paths.mysql_path)
+        shell.run_cmd(f"cmake --install build-{commit.name} --prefix dist-{commit.name}", logger, self.paths.mysql_path)
 
     def _relink_mysql(self, commit: CommitInfo) -> None:
         # TODO(dwslim): implement

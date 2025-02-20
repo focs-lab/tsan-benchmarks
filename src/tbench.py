@@ -35,14 +35,26 @@ def parse_args() -> argparse.Namespace:
     build_ex = build.add_mutually_exclusive_group(required=True)
     build_ex.add_argument("-n", "--name", help="Name of LLVM commit to build benchmarks for, according to the config file specified by -c.",
                           dest="build_name")
-    build_ex.add_argument("-a", "--all", action="store_true", help="Build benchmarks for all LLVM commits in the config file.",
-                          dest="build_all")
+    build_ex.add_argument("-ac", "--all-commits", action="store_true", help="Build benchmarks for all LLVM commits in the config file.",
+                          dest="build_all_commits")
+
+    build_ex2 = build.add_mutually_exclusive_group(required=True)
+    build_ex2.add_argument("--v8", help="Build V8.", action="store_true", dest="build_v8")
+    build_ex2.add_argument("--mysql", help="Build MySQL.", action="store_true", dest="build_mysql")
+    build_ex2.add_argument("-ab", "--all-benchmarks", action="store_true", help="Build all benchmarks.",
+                           dest="build_all_benchmarks")
 
     run_ex = run.add_mutually_exclusive_group(required=True)
     run_ex.add_argument("-n", "--name", help="Name of LLVM commit to run benchmarks for, according to the config file specified by -c.",
                           dest="run_name")
-    run_ex.add_argument("-a", "--all", action="store_true", help="Run benchmarks for all LLVM commits in the config file.",
-                          dest="run_all")
+    run_ex.add_argument("-ac", "--all-commits", action="store_true", help="Run benchmarks for all LLVM commits in the config file.",
+                          dest="run_all_commits")
+
+    run_ex2 = run.add_mutually_exclusive_group(required=True)
+    run_ex2.add_argument("--v8", help="Run V8.", action="store_true", dest="run_v8")
+    run_ex2.add_argument("--mysql", help="Run MySQL.", action="store_true", dest="run_mysql")
+    run_ex2.add_argument("-ab", "--all-benchmarks", action="store_true", help="Run all benchmarks.",
+                           dest="run_all_benchmarks")
 
     run.add_argument("-s", "--small", action="store_true", help="Run benchmarks at smaller scale for fast testing.",
                      dest="run_small")
@@ -99,8 +111,11 @@ def build_dependencies(ctx: Context):
     builder_logger = util.logger.create_logger("builder")
     builder_ctx = Context(ctx.args, ctx.config, builder_logger)
 
-    builder = Builder(builder_ctx)
-    if ctx.args.build_all:
+    builder = Builder(builder_ctx,
+                      target=enums.Target.V8 if ctx.args.build_v8 else
+                                   enums.Target.MYSQL if ctx.args.build_mysql
+                                   else enums.Target.ALL)
+    if ctx.args.build_all_commits:
         builder.build_all()
     else:
         builder.build_one(ctx.args.build_name)
@@ -111,7 +126,10 @@ def build_dev(ctx: Context):
     builder_logger = util.logger.create_logger("builder")
     builder_ctx = Context(ctx.args, ctx.config, builder_logger)
 
-    builder = Builder(builder_ctx)
+    builder = Builder(builder_ctx,
+                      target=enums.Target.V8 if ctx.args.build_v8 else
+                                   enums.Target.MYSQL if ctx.args.build_mysql
+                                   else enums.Target.ALL)
     build_or_link = enums.DevMode.BUILD if ctx.args.dev_build else enums.DevMode.LINK
     if ctx.args.dev_all:
         builder.dev_all(build_or_link)
@@ -125,8 +143,11 @@ def run_benchmarks(ctx: Context):
 
     runner_logger = util.logger.create_logger("runner")
     runner_ctx = Context(ctx.args, ctx.config, runner_logger)
-    runner = Runner(runner_ctx, ctx.args.run_small)
-    if ctx.args.run_all:
+    runner = Runner(runner_ctx, ctx.args.run_small,
+                    target=enums.Target.V8 if ctx.args.build_v8 else
+                           enums.Target.MYSQL if ctx.args.build_mysql
+                           else enums.Target.ALL)
+    if ctx.args.run_all_commits:
         runner.run_all()
     else:
         runner.run_one(ctx.args.run_name)

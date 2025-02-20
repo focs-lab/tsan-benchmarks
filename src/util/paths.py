@@ -17,14 +17,14 @@ class Paths:
     v8_benchmarks_path = v8_path / "test" / "benchmarks" / "data"
     v8_csuite_path = v8_path / "test" / "benchmarks" / "csuite"
     llvm_path = v8_path / "third_party" / "llvm"
+    llvm_build_path = v8_path / "third_party" / "llvm-build" / "Release+Asserts"
     results_path = Path("results")
     v8_results_path = Path("results") / "v8"
     reports_path = Path("reports")
+    mysql_path = programs_path / "mysql"
 
     def __init__(self, ctx: Context):
         self.logger = ctx.logger
-
-
 
     def maybe_mkdir(self, path: Path) -> None:
         if path.exists():
@@ -46,6 +46,11 @@ class Paths:
     def ensure_v8_exists(self) -> None:
         if not self.v8_path.is_dir():
             self.logger.error("v8/ not found in programs/. Aborting!")
+            sys.exit(1)
+
+    def ensure_mysql_exists(self) -> None:
+        if not self.mysql_path.is_dir():
+            self.logger.error("mysql/ not found in programs/. Aborting!")
             sys.exit(1)
 
     def ensure_llvm_exists(self) -> None:

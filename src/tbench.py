@@ -144,8 +144,8 @@ def run_benchmarks(ctx: Context):
     runner_logger = util.logger.create_logger("runner")
     runner_ctx = Context(ctx.args, ctx.config, runner_logger)
     runner = Runner(runner_ctx, ctx.args.run_small,
-                    target=enums.Target.V8 if ctx.args.build_v8 else
-                           enums.Target.MYSQL if ctx.args.build_mysql
+                    target=enums.Target.V8 if ctx.args.run_v8 else
+                           enums.Target.MYSQL if ctx.args.run_mysql
                            else enums.Target.ALL)
     if ctx.args.run_all_commits:
         runner.run_all()
